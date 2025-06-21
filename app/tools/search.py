@@ -70,13 +70,12 @@ async def opinions(
     else:
         logger.info(f"Searching opinions with query: {q}")
 
+    # API key is optional for public access
     if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
         if ctx:
-            await ctx.error(error_msg)
+            await ctx.info("Using public API access (no authentication)")
         else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
+            logger.info("Using public API access (no authentication)")
 
     params = {
         "q": q,
@@ -102,7 +101,9 @@ async def opinions(
     if limit:
         params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -208,7 +209,9 @@ async def dockets(
     if limit:
         params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -314,7 +317,9 @@ async def dockets_with_documents(
     if limit:
         params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -427,7 +432,9 @@ async def recap_documents(
     if limit:
         params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -530,7 +537,9 @@ async def audio(
     if limit:
         params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -637,7 +646,9 @@ async def people(
     if limit:
         params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:

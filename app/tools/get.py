@@ -49,15 +49,16 @@ async def opinion(
     else:
         logger.info(f"Getting opinion with ID: {opinion_id}")
 
+    # API key is optional for public access
     if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
         if ctx:
-            await ctx.error(error_msg)
+            await ctx.info("Using public API access (no authentication)")
         else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
+            logger.info("Using public API access (no authentication)")
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -122,7 +123,9 @@ async def docket(
             logger.error(error_msg)
         raise ValueError(error_msg)
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -187,7 +190,9 @@ async def audio(
             logger.error(error_msg)
         raise ValueError(error_msg)
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -252,7 +257,9 @@ async def cluster(
             logger.error(error_msg)
         raise ValueError(error_msg)
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -317,7 +324,9 @@ async def person(
             logger.error(error_msg)
         raise ValueError(error_msg)
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -384,7 +393,9 @@ async def court(
             logger.error(error_msg)
         raise ValueError(error_msg)
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:

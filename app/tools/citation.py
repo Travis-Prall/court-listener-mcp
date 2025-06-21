@@ -79,7 +79,9 @@ async def lookup_citation(
             logger.error(error_msg)
         raise ValueError(error_msg)
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -157,7 +159,9 @@ async def batch_lookup_citations(
             logger.error(error_msg)
         raise ValueError(error_msg)
 
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -583,7 +587,9 @@ async def enhanced_citation_lookup(
     # Then, lookup in CourtListener if requested and API key available
     if include_courtlistener and API_KEY:
         try:
-            headers = {"Authorization": f"Token {API_KEY}"}
+            headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Token {API_KEY}"
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://www.courtlistener.com/api/rest/v4/citation-lookup/",
