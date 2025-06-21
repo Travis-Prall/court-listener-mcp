@@ -11,7 +11,7 @@ services:
     # Run the MCP server with streamable-http transport
     command: python -m app
     ports:
-      - "8786:8786"
+      - "8785:8785"
     env_file:
       - .env
     environment:
