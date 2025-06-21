@@ -46,12 +46,29 @@ async def test_status_tool(client: Client[Any]) -> None:
         data = json.loads(response)
 
         # Verify expected fields
-        assert data["status"] == "online"
+        assert data["status"] == "healthy"
         assert data["service"] == "CourtListener MCP Server"
         assert data["version"] == "0.1.0"
+        assert "timestamp" in data
+        assert "environment" in data
+        assert "system" in data
+        assert "server" in data
+
+        # Verify environment section
+        assert "runtime" in data["environment"]
+        assert "docker" in data["environment"]
+        assert "python_version" in data["environment"]
+
+        # Verify system section
+        assert "process_uptime" in data["system"]
+        assert "memory_mb" in data["system"]
+        assert "cpu_percent" in data["system"]
+
+        # Verify server section
+        assert data["server"]["tools_available"] == ["search", "get", "citation"]
+        assert data["server"]["transport"] == "streamable-http"
         assert (
-            data["description"]
-            == "MCP server for accessing CourtListener legal database"
+            data["server"]["api_base"] == "https://www.courtlistener.com/api/rest/v4/"
         )
 
         logger.info(f"Status tool test passed: {data}")
