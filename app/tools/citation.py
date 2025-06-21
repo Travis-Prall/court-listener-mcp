@@ -588,8 +588,8 @@ async def enhanced_citation_lookup(
     if include_courtlistener and API_KEY:
         try:
             headers = {}
-    if API_KEY:
-        headers["Authorization"] = f"Token {API_KEY}"
+            if API_KEY:
+                headers["Authorization"] = f"Token {API_KEY}"
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://www.courtlistener.com/api/rest/v4/citation-lookup/",
