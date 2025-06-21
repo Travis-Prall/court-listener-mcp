@@ -1,0 +1,233 @@
+# Ignore entire folders and their contents
+.devcontainer/
+.vscode/
+scripts/
+docs/
+
+# VS Code user settings (keep workspace settings but ignore user-specific ones)
+*.code-workspace
+
+# Specific configuration files
+ruff.toml
+uv.lock
+
+Other/
+
+# Python Environment and Cache
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+.hypothesis/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Document Files (keep originals out of repo for security/size)
+*.pdf
+*.doc
+*.docx
+*.xlsx
+*.xls
+*.ppt
+*.pptx
+
+# Environment and Configuration
+.env
+.env.*
+*.env
+!.env.example
+.env.local
+.env.*.local
+
+# Logs (comprehensive patterns)
+*.log
+*.logs
+*.log.*
+logs/
+log/
+**/*.log
+**/*.logs
+# Test logs specifically
+tests/logs/
+app/logs/
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.backup
+.tmp/
+temp/
+tmp/
+*.orig
+*.rej
+
+# MCP and Development
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm
+.yarn
+.pnpm-store/
+.eslintcache
+.nyc_output
+coverage/
+*.lcov
+.parcel-cache
+
+# IDE and Editor Files
+*.sublime-project
+*.sublime-workspace
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode-test/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Legal Document Processing
+exports/
+converted/
+processed/
+output/
+*.converted.*
+*.processed.*
+
+# Backup and Archive Files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.gz
+*.bz2
+*.xz
+backup/
+backups/
+archive/
+archives/
+
+# uv
+uv.lock.temp
+dist/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# celery beat schedule file
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# mkdocs documentation
+/site
+
+# Flask/Django stuff:
+instance/
+.webassets-cache
+*.sqlite3
+*.db
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# PyBuilder
+target/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# PEP 582
+__pypackages__/
+
+# Secrets and API keys
+secrets/
+*.key
+*.pem
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# Local development
+local/
+.local/
+
+.github
+.ruff_cache
+uv.lock

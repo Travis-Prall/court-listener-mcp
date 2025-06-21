@@ -1,0 +1,27 @@
+
+
+services:
+  # Production service
+  court-listener-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: court-listener-mcp:latest
+    container_name: court-listener-mcp-server
+    # Run the MCP server with streamable-http transport
+    command: python -m app
+    ports:
+      - "8785:8785"
+    env_file:
+      - .env
+    environment:
+      - LOG_LEVEL=INFO
+      - API_BASE_URL=https://www.courtlistener.com/api/rest/v4
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    # No ports needed for stdio
+
+networks:
+  mcp-network:
+    driver: bridge

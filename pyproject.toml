@@ -1,0 +1,77 @@
+[project]
+name = "court-listener-mcp-server"
+version = "0.1.0"
+description = "Model Context Protocol server providing LLM-friendly access to legal cases and court data through the CourtListener API v4"
+authors = [{ name = "Travis-Prall", email = "smart@travisprall.com" }]
+readme = "README.md"
+license = { text = "" }
+requires-python = ">=3.12.0"
+keywords = ["mcp", "courtlistener", "legal", "cases", "opinions", "api"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+  "fastmcp>=2.8.0",
+  "httpx>=0.28.1",
+  "loguru>=0.7.3",
+  "python-dotenv>=1.0.0",
+  "anyio>=3.0.0",
+  "pydantic>=2.0.0",
+  "psutil>=7.0.0",
+  "citeurl[full]>=11.5.1",
+]
+
+[project.urls]
+Homepage = "https://www.travisprall.com/"
+Repository = "https://github.com/Travis-Prall"
+Issues = "https://github.com/Travis-Prall/issues"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+  # Testing
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=6.0.0",
+  # Code quality
+  "mypy>=1.12.0",
+  "ruff>=0.8.0",
+  "pydantic>=2.0.0", # Add pydantic here as well for mypy plugin
+  # Development tools
+  "ipython>=8.28.0",
+  "rich>=13.9.0",
+  "httpx-sse>=0.4.0",
+]
+
+[tool.uv.sources]
+# Add any custom package sources if needed
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+
+# for strict mypy: (this is the tricky one :-))
+disallow_untyped_defs = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

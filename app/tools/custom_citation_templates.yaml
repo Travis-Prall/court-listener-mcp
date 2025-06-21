@@ -1,0 +1,26 @@
+MSPB Reporter:
+  tokens:
+    volume:
+      regex: \d+
+    page:
+      regex: \d+
+    year:
+      regex: \d{4}
+      default: ""
+  patterns:
+    - "{volume} M\\.S\\.P\\.R\\. {page}"
+    - "{volume} M\\.S\\.P\\.R\\. {page} \\({year}\\)"
+  broad patterns:
+    - "{volume}\\s+M\\.?S\\.?P\\.?R\\.?\\s+{page}"
+    - "{volume}\\s+M\\.?S\\.?P\\.?R\\.?\\s+{page}\\s*\\({year}\\)"
+  name builder:
+    parts:
+      - "{volume} M.S.P.R. {page}"
+      - " ({year})"
+  URL builder:
+    parts:
+      - "https://www.mspb.gov/decisions/precedential/"
+      - "{volume}"
+      - "mspr"
+      - "{page}"
+      - ".pdf"
