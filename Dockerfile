@@ -60,7 +60,7 @@ ENV PYTHONUNBUFFERED=1 \
     API_BASE_URL=https://www.courtlistener.com/api/rest/v4/
 
 # Expose port (optional - not needed for stdio but doesn't hurt)
-EXPOSE 8775
+EXPOSE 8785
 
 # Labels for container metadata
 LABEL org.opencontainers.image.title="CourtListener MCP Server" \
