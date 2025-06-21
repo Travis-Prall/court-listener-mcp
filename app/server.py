@@ -68,7 +68,7 @@ async def setup() -> None:
 asyncio.run(setup())
 
 
-def main() -> None:
+async def main() -> None:
     """Run the CourtListener MCP server with streamable-http transport."""
     logger.info("Starting CourtListener MCP server with streamable-http transport")
     logger.info(
@@ -76,7 +76,7 @@ def main() -> None:
     )
 
     try:
-        mcp.run(
+        await mcp.run_async(
             transport="streamable-http",
             host=config.host,
             port=config.mcp_port,
@@ -90,4 +90,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     logger.info("Starting CourtListener MCP server")
-    main()
+    asyncio.run(main())
