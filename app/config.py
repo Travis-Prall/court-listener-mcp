@@ -2,6 +2,8 @@
 """Configuration management for CourtListener MCP Server."""
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 import httpx
@@ -104,17 +106,18 @@ def is_debug_enabled() -> bool:
     )
 
 
-def get_http_client(ctx: "Context") -> httpx.AsyncClient:
-    """Get the shared HTTP client from the lifespan context.
+@asynccontextmanager
+async def get_http_client(ctx: "Context") -> AsyncIterator[httpx.AsyncClient]:
+    """Get an HTTP client as an async context manager.
 
-    If the lifespan context is not available (e.g., in tests), returns a new
-    httpx.AsyncClient instance.
+    If the lifespan context is available, yields the shared client (without closing it).
+    Otherwise, creates a temporary client that is properly closed after use.
 
     Args:
         ctx: The FastMCP context containing the lifespan context.
 
-    Returns:
-        The shared httpx.AsyncClient instance, or a new client if needed.
+    Yields:
+        An httpx.AsyncClient instance for making API requests.
 
     """
     # Try to get the shared client from lifespan context
@@ -122,11 +125,17 @@ def get_http_client(ctx: "Context") -> httpx.AsyncClient:
     if lifespan_ctx is not None:
         client = getattr(lifespan_ctx, "http_client", None)
         if client is not None and not client.is_closed:
-            return client
+            # Yield the shared client without closing it (managed by lifespan)
+            yield client
+            return
 
-    # Fallback: create a new client if lifespan context is unavailable or client is closed
+    # Fallback: create a temporary client and ensure it's closed
     logger.debug("Creating fallback HTTP client (lifespan client unavailable or closed)")
-    return httpx.AsyncClient(
+    client = httpx.AsyncClient(
         timeout=config.courtlistener_timeout,
         limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
     )
+    try:
+        yield client
+    finally:
+        await client.aclose()

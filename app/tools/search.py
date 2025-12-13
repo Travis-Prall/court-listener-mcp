@@ -51,7 +51,6 @@ async def _search_courtlistener(
     await ctx.info(f"Searching {resource_type} with query: {q}")
 
     headers = get_auth_headers()
-    http_client = get_http_client(ctx)
 
     params: dict[str, str | int] = {
         "q": q,
@@ -69,13 +68,14 @@ async def _search_courtlistener(
             params[key] = value
 
     try:
-        response = await http_client.get(
-            f"{config.courtlistener_base_url}search/",
-            params=params,
-            headers=headers,
-        )
-        response.raise_for_status()
-        data = response.json()
+        async with get_http_client(ctx) as http_client:
+            response = await http_client.get(
+                f"{config.courtlistener_base_url}search/",
+                params=params,
+                headers=headers,
+            )
+            response.raise_for_status()
+            data = response.json()
 
         await ctx.info(f"Found {data.get('count', 0)} {resource_type}")
         return data
