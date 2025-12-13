@@ -1,19 +1,12 @@
 """Get tools for CourtListener MCP server."""
 
-import os
 from typing import Annotated, Any
 
-from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
 import httpx
-from loguru import logger
 from pydantic import Field
 
-# Load environment variables
-load_dotenv()
-
-# Get API key from environment
-API_KEY = os.getenv("COURT_LISTENER_API_KEY")
+from app.config import config, get_auth_headers, get_http_client
 
 # Create the get server
 get_server: FastMCP[Any] = FastMCP(
@@ -26,329 +19,93 @@ get_server: FastMCP[Any] = FastMCP(
 )
 
 
-@get_server.tool()
-async def opinion(
-    opinion_id: Annotated[str, Field(description="The opinion ID to retrieve")],
-    ctx: Context | None = None,
+async def _fetch_resource(
+    ctx: Context,
+    resource_type: str,
+    resource_id: str,
+    endpoint: str,
 ) -> dict[str, Any]:
-    """Get a specific court opinion by ID from CourtListener.
+    """Fetch a resource by ID from the CourtListener API.
 
     Args:
-        opinion_id: The opinion ID to retrieve.
-        ctx: Optional context for logging and error reporting.
+        ctx: The FastMCP context for logging and accessing shared resources.
+        resource_type: Human-readable name of the resource (for logging).
+        resource_id: The ID of the resource to retrieve.
+        endpoint: The API endpoint path (e.g., 'opinions', 'dockets').
 
     Returns:
-        dict: The opinion data as returned by the CourtListener API.
+        dict: The resource data as returned by the CourtListener API.
 
     Raises:
         ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
+        httpx.HTTPStatusError: If the API request fails.
 
     """
-    if ctx:
-        await ctx.info(f"Getting opinion with ID: {opinion_id}")
-    else:
-        logger.info(f"Getting opinion with ID: {opinion_id}")
+    await ctx.info(f"Getting {resource_type} with ID: {resource_id}")
 
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = get_auth_headers()
+    http_client = get_http_client(ctx)
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved opinion {opinion_id}")
-            else:
-                logger.info(f"Successfully retrieved opinion {opinion_id}")
-
-            return response.json()
+        response = await http_client.get(
+            f"{config.courtlistener_base_url}{endpoint}/{resource_id}/",
+            headers=headers,
+        )
+        response.raise_for_status()
+        await ctx.info(f"Successfully retrieved {resource_type} {resource_id}")
+        return response.json()
 
     except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting opinion: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"HTTP error getting {resource_type}: {e}")
+        raise
     except Exception as e:
-        error_msg = f"Error getting opinion: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"Error getting {resource_type}: {e}")
+        raise
+
+
+@get_server.tool()
+async def opinion(
+    opinion_id: Annotated[str, Field(description="The opinion ID to retrieve")],
+    ctx: Context,
+) -> dict[str, Any]:
+    """Get a specific court opinion by ID from CourtListener."""
+    return await _fetch_resource(ctx, "opinion", opinion_id, "opinions")
 
 
 @get_server.tool()
 async def docket(
     docket_id: Annotated[str, Field(description="The docket ID to retrieve")],
-    ctx: Context | None = None,
+    ctx: Context,
 ) -> dict[str, Any]:
-    """Get a specific court docket by ID from CourtListener.
-
-    Args:
-        docket_id: The docket ID to retrieve.
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: The docket data as returned by the CourtListener API.
-
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Getting docket with ID: {docket_id}")
-    else:
-        logger.info(f"Getting docket with ID: {docket_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/dockets/{docket_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved docket {docket_id}")
-            else:
-                logger.info(f"Successfully retrieved docket {docket_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting docket: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting docket: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Get a specific court docket by ID from CourtListener."""
+    return await _fetch_resource(ctx, "docket", docket_id, "dockets")
 
 
 @get_server.tool()
 async def audio(
     audio_id: Annotated[str, Field(description="The audio recording ID to retrieve")],
-    ctx: Context | None = None,
+    ctx: Context,
 ) -> dict[str, Any]:
-    """Get oral argument audio information by ID from CourtListener.
-
-    Args:
-        audio_id: The audio recording ID to retrieve.
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: The audio data as returned by the CourtListener API.
-
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Getting audio with ID: {audio_id}")
-    else:
-        logger.info(f"Getting audio with ID: {audio_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/audio/{audio_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved audio {audio_id}")
-            else:
-                logger.info(f"Successfully retrieved audio {audio_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting audio: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting audio: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Get oral argument audio information by ID from CourtListener."""
+    return await _fetch_resource(ctx, "audio", audio_id, "audio")
 
 
 @get_server.tool()
 async def cluster(
     cluster_id: Annotated[str, Field(description="The opinion cluster ID to retrieve")],
-    ctx: Context | None = None,
+    ctx: Context,
 ) -> dict[str, Any]:
-    """Get an opinion cluster by ID from CourtListener.
-
-    Args:
-        cluster_id: The opinion cluster ID to retrieve.
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: The opinion cluster data as returned by the CourtListener API.
-
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Getting cluster with ID: {cluster_id}")
-    else:
-        logger.info(f"Getting cluster with ID: {cluster_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved cluster {cluster_id}")
-            else:
-                logger.info(f"Successfully retrieved cluster {cluster_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting cluster: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting cluster: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Get an opinion cluster by ID from CourtListener."""
+    return await _fetch_resource(ctx, "cluster", cluster_id, "clusters")
 
 
 @get_server.tool()
 async def person(
     person_id: Annotated[str, Field(description="The person (judge) ID to retrieve")],
-    ctx: Context | None = None,
+    ctx: Context,
 ) -> dict[str, Any]:
-    """Get judge or legal professional information by ID from CourtListener.
-
-    Args:
-        person_id: The person (judge) ID to retrieve.
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: The person data as returned by the CourtListener API.
-
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Getting person with ID: {person_id}")
-    else:
-        logger.info(f"Getting person with ID: {person_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/people/{person_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved person {person_id}")
-            else:
-                logger.info(f"Successfully retrieved person {person_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting person: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting person: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Get judge or legal professional information by ID from CourtListener."""
+    return await _fetch_resource(ctx, "person", person_id, "people")
 
 
 @get_server.tool()
@@ -356,63 +113,7 @@ async def court(
     court_id: Annotated[
         str, Field(description="The court ID to retrieve (e.g., 'scotus', 'ca9')")
     ],
-    ctx: Context | None = None,
+    ctx: Context,
 ) -> dict[str, Any]:
-    """Get court information by ID from CourtListener.
-
-    Args:
-        court_id: The court ID to retrieve (e.g., 'scotus', 'ca9').
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: The court data as returned by the CourtListener API.
-
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Getting court with ID: {court_id}")
-    else:
-        logger.info(f"Getting court with ID: {court_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/courts/{court_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved court {court_id}")
-            else:
-                logger.info(f"Successfully retrieved court {court_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting court: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting court: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Get court information by ID from CourtListener."""
+    return await _fetch_resource(ctx, "court", court_id, "courts")

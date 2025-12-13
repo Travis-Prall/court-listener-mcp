@@ -1,19 +1,12 @@
 """Search tools for CourtListener MCP server."""
 
-import os
 from typing import Annotated, Any
 
-from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
 import httpx
-from loguru import logger
 from pydantic import Field
 
-# Load environment variables
-load_dotenv()
-
-# Get API key from environment
-API_KEY = os.getenv("COURT_LISTENER_API_KEY")
+from app.config import config, get_auth_headers, get_http_client
 
 # Create the search server
 search_server: FastMCP[Any] = FastMCP(
@@ -27,9 +20,78 @@ search_server: FastMCP[Any] = FastMCP(
 )
 
 
+async def _search_courtlistener(
+    ctx: Context,
+    resource_type: str,
+    search_type: str,
+    q: str,
+    order_by: str,
+    limit: int,
+    filters: dict[str, Any],
+) -> dict[str, Any]:
+    """Execute a search against the CourtListener API.
+
+    Args:
+        ctx: The FastMCP context for logging and accessing shared resources.
+        resource_type: Human-readable name of the resource type (for logging).
+        search_type: The CourtListener V4 API type parameter (e.g., 'o', 'd', 'p').
+        q: The search query string.
+        order_by: Sort order for results.
+        limit: Maximum number of results to return.
+        filters: Dictionary of optional filter parameters.
+
+    Returns:
+        dict: The search results as returned by the CourtListener API.
+
+    Raises:
+        ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
+        httpx.HTTPStatusError: If the API request fails.
+
+    """
+    await ctx.info(f"Searching {resource_type} with query: {q}")
+
+    headers = get_auth_headers()
+    http_client = get_http_client(ctx)
+
+    params: dict[str, str | int] = {
+        "q": q,
+        "order_by": order_by,
+        "type": search_type,
+    }
+
+    # Add limit (V4 uses 'hit' instead of 'limit')
+    if limit:
+        params["hit"] = limit
+
+    # Add optional filters (only non-empty/non-zero values)
+    for key, value in filters.items():
+        if value:
+            params[key] = value
+
+    try:
+        response = await http_client.get(
+            f"{config.courtlistener_base_url}search/",
+            params=params,
+            headers=headers,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        await ctx.info(f"Found {data.get('count', 0)} {resource_type}")
+        return data
+
+    except httpx.HTTPStatusError as e:
+        await ctx.error(f"HTTP error: {e}")
+        raise
+    except Exception as e:
+        await ctx.error(f"Search error: {e}")
+        raise
+
+
 @search_server.tool()
 async def opinions(
     q: Annotated[str, Field(description="Search query for full text of opinions")],
+    ctx: Context,
     court: Annotated[
         str, Field(description="Court ID filter (e.g., 'scotus', 'ca9')")
     ] = "",
@@ -54,93 +116,31 @@ async def opinions(
     limit: Annotated[
         int, Field(description="Maximum results to return", ge=1, le=100)
     ] = 20,
-    ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Search case law opinion clusters with nested Opinion documents in CourtListener.
-
-    Returns:
-        A dictionary containing search results with opinion clusters and nested opinions.
-
-    Raises:
-        ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Searching opinions with query: {q}")
-    else:
-        logger.info(f"Searching opinions with query: {q}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    params = {
-        "q": q,
-        "order_by": order_by,
-        "type": "o",  # Opinion type for V4 API
-    }
-
-    # Add optional filters
-    if court:
-        params["court"] = court
-    if case_name:
-        params["case_name"] = case_name
-    if judge:
-        params["judge"] = judge
-    if filed_after:
-        params["filed_after"] = filed_after
-    if filed_before:
-        params["filed_before"] = filed_before
-    if cited_gt:
-        params["cited_gt"] = cited_gt
-    if cited_lt:
-        params["cited_lt"] = cited_lt
-    if limit:
-        params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.courtlistener.com/api/rest/v4/search/",
-                params=params,
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if ctx:
-                await ctx.info(f"Found {data.get('count', 0)} opinions")
-            else:
-                logger.info(f"Found {data.get('count', 0)} opinions")
-
-            return data
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Search error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Search case law opinion clusters with nested Opinion documents in CourtListener."""
+    return await _search_courtlistener(
+        ctx=ctx,
+        resource_type="opinions",
+        search_type="o",
+        q=q,
+        order_by=order_by,
+        limit=limit,
+        filters={
+            "court": court,
+            "case_name": case_name,
+            "judge": judge,
+            "filed_after": filed_after,
+            "filed_before": filed_before,
+            "cited_gt": cited_gt,
+            "cited_lt": cited_lt,
+        },
+    )
 
 
 @search_server.tool()
 async def dockets(
     q: Annotated[str, Field(description="Search query for docket text")],
+    ctx: Context,
     court: Annotated[
         str, Field(description="Court ID filter (e.g., 'scotus', 'ca9')")
     ] = "",
@@ -162,91 +162,30 @@ async def dockets(
     limit: Annotated[
         int, Field(description="Maximum results to return", ge=1, le=100)
     ] = 20,
-    ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Search federal cases (dockets) from PACER in CourtListener.
-
-    Returns:
-        A dictionary containing search results with dockets.
-
-    Raises:
-        ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Searching dockets with query: {q}")
-    else:
-        logger.info(f"Searching dockets with query: {q}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    params = {
-        "q": q,
-        "order_by": order_by,
-        "type": "d",  # Docket type for V4 API
-    }
-
-    # Add optional filters
-    if court:
-        params["court"] = court
-    if case_name:
-        params["case_name"] = case_name
-    if docket_number:
-        params["docket_number"] = docket_number
-    if date_filed_after:
-        params["date_filed_after"] = date_filed_after
-    if date_filed_before:
-        params["date_filed_before"] = date_filed_before
-    if party_name:
-        params["party_name"] = party_name
-    if limit:
-        params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.courtlistener.com/api/rest/v4/search/",
-                params=params,
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if ctx:
-                await ctx.info(f"Found {data.get('count', 0)} dockets")
-            else:
-                logger.info(f"Found {data.get('count', 0)} dockets")
-
-            return data
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Search error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Search federal cases (dockets) from PACER in CourtListener."""
+    return await _search_courtlistener(
+        ctx=ctx,
+        resource_type="dockets",
+        search_type="d",
+        q=q,
+        order_by=order_by,
+        limit=limit,
+        filters={
+            "court": court,
+            "case_name": case_name,
+            "docket_number": docket_number,
+            "date_filed_after": date_filed_after,
+            "date_filed_before": date_filed_before,
+            "party_name": party_name,
+        },
+    )
 
 
 @search_server.tool()
 async def dockets_with_documents(
     q: Annotated[str, Field(description="Search query for federal cases")],
+    ctx: Context,
     court: Annotated[
         str, Field(description="Court ID filter (e.g., 'scotus', 'ca9')")
     ] = "",
@@ -268,91 +207,33 @@ async def dockets_with_documents(
     limit: Annotated[
         int, Field(description="Maximum results to return", ge=1, le=100)
     ] = 20,
-    ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Search federal cases (dockets) with up to three nested documents. If there are more than three matching documents, the more_docs field will be true.
+    """Search federal cases (dockets) with up to three nested documents.
 
-    Returns:
-        A dictionary containing search results with dockets and their nested documents.
-
-    Raises:
-        ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
-
+    If there are more than three matching documents, the more_docs field will be true.
     """
-    if ctx:
-        await ctx.info(f"Searching dockets with documents using query: {q}")
-    else:
-        logger.info(f"Searching dockets with documents using query: {q}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    params = {
-        "q": q,
-        "order_by": order_by,
-        "type": "r",  # Dockets with nested documents type for V4 API
-    }
-
-    # Add optional filters
-    if court:
-        params["court"] = court
-    if case_name:
-        params["case_name"] = case_name
-    if docket_number:
-        params["docket_number"] = docket_number
-    if date_filed_after:
-        params["date_filed_after"] = date_filed_after
-    if date_filed_before:
-        params["date_filed_before"] = date_filed_before
-    if party_name:
-        params["party_name"] = party_name
-    if limit:
-        params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.courtlistener.com/api/rest/v4/search/",
-                params=params,
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if ctx:
-                await ctx.info(f"Found {data.get('count', 0)} dockets with documents")
-            else:
-                logger.info(f"Found {data.get('count', 0)} dockets with documents")
-
-            return data
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Search error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    return await _search_courtlistener(
+        ctx=ctx,
+        resource_type="dockets with documents",
+        search_type="r",
+        q=q,
+        order_by=order_by,
+        limit=limit,
+        filters={
+            "court": court,
+            "case_name": case_name,
+            "docket_number": docket_number,
+            "date_filed_after": date_filed_after,
+            "date_filed_before": date_filed_before,
+            "party_name": party_name,
+        },
+    )
 
 
 @search_server.tool()
 async def recap_documents(
     q: Annotated[str, Field(description="Search query for RECAP filing documents")],
+    ctx: Context,
     court: Annotated[
         str, Field(description="Court ID filter (e.g., 'scotus', 'ca9')")
     ] = "",
@@ -380,92 +261,32 @@ async def recap_documents(
     limit: Annotated[
         int, Field(description="Maximum results to return", ge=1, le=100)
     ] = 20,
-    ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Search federal filing documents from PACER in the RECAP archive.
-
-    Returns:
-        A dictionary containing search results with RECAP documents.
-
-    """
-    if ctx:
-        await ctx.info(f"Searching RECAP documents with query: {q}")
-    else:
-        logger.info(f"Searching RECAP documents with query: {q}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        return {"error": error_msg}
-
-    params = {
-        "q": q,
-        "order_by": order_by,
-        "type": "rd",  # RECAP document type for V4 API
-    }
-
-    # Add optional filters
-    if court:
-        params["court"] = court
-    if case_name:
-        params["case_name"] = case_name
-    if docket_number:
-        params["docket_number"] = docket_number
-    if document_number:
-        params["document_number"] = document_number
-    if attachment_number:
-        params["attachment_number"] = attachment_number
-    if filed_after:
-        params["filed_after"] = filed_after
-    if filed_before:
-        params["filed_before"] = filed_before
-    if party_name:
-        params["party_name"] = party_name
-    if limit:
-        params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.courtlistener.com/api/rest/v4/search/",
-                params=params,
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if ctx:
-                await ctx.info(f"Found {data.get('count', 0)} RECAP documents")
-            else:
-                logger.info(f"Found {data.get('count', 0)} RECAP documents")
-
-            return data
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        return {"error": f"HTTP {e.response.status_code}: {e.response.text}"}
-    except Exception as e:
-        error_msg = f"Search error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        return {"error": str(e)}
+    """Search federal filing documents from PACER in the RECAP archive."""
+    return await _search_courtlistener(
+        ctx=ctx,
+        resource_type="RECAP documents",
+        search_type="rd",
+        q=q,
+        order_by=order_by,
+        limit=limit,
+        filters={
+            "court": court,
+            "case_name": case_name,
+            "docket_number": docket_number,
+            "document_number": document_number,
+            "attachment_number": attachment_number,
+            "filed_after": filed_after,
+            "filed_before": filed_before,
+            "party_name": party_name,
+        },
+    )
 
 
 @search_server.tool()
 async def audio(
     q: Annotated[str, Field(description="Search query for oral argument audio")],
+    ctx: Context,
     court: Annotated[
         str, Field(description="Court ID filter (e.g., 'scotus', 'ca9')")
     ] = "",
@@ -486,84 +307,23 @@ async def audio(
     limit: Annotated[
         int, Field(description="Maximum results to return", ge=1, le=100)
     ] = 20,
-    ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Search oral argument audio recordings in CourtListener.
-
-    Returns:
-        A dictionary containing search results with audio recordings.
-
-    Raises:
-        ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Searching audio with query: {q}")
-    else:
-        logger.info(f"Searching audio with query: {q}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    params = {
-        "q": q,
-        "order_by": order_by,
-        "type": "oa",  # Oral argument type for V4 API
-    }
-
-    # Add optional filters
-    if court:
-        params["court"] = court
-    if case_name:
-        params["case_name"] = case_name
-    if judge:
-        params["judge"] = judge
-    if argued_after:
-        params["dateArgued_after"] = argued_after
-    if argued_before:
-        params["dateArgued_before"] = argued_before
-    if limit:
-        params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.courtlistener.com/api/rest/v4/search/",
-                params=params,
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if ctx:
-                await ctx.info(f"Found {data.get('count', 0)} audio recordings")
-            else:
-                logger.info(f"Found {data.get('count', 0)} audio recordings")
-
-            return data
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Search error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Search oral argument audio recordings in CourtListener."""
+    return await _search_courtlistener(
+        ctx=ctx,
+        resource_type="audio recordings",
+        search_type="oa",
+        q=q,
+        order_by=order_by,
+        limit=limit,
+        filters={
+            "court": court,
+            "case_name": case_name,
+            "judge": judge,
+            "dateArgued_after": argued_after,
+            "dateArgued_before": argued_before,
+        },
+    )
 
 
 @search_server.tool()
@@ -571,6 +331,7 @@ async def people(
     q: Annotated[
         str, Field(description="Search query for judges and legal professionals")
     ],
+    ctx: Context,
     name: Annotated[str, Field(description="Filter by person's name")] = "",
     position_type: Annotated[
         str, Field(description="Filter by position type (e.g., 'jud' for judge)")
@@ -591,83 +352,21 @@ async def people(
     limit: Annotated[
         int, Field(description="Maximum results to return", ge=1, le=100)
     ] = 20,
-    ctx: Context | None = None,
 ) -> dict[str, Any]:
-    """Search judges and legal professionals in the CourtListener database.
-
-    Returns:
-        A dictionary containing search results with people information.
-
-    Raises:
-        ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
-
-    """
-    if ctx:
-        await ctx.info(f"Searching people with query: {q}")
-    else:
-        logger.info(f"Searching people with query: {q}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    params = {
-        "q": q,
-        "order_by": order_by,
-        "type": "p",  # People type for V4 API
-    }
-
-    # Add optional filters
-    if name:
-        params["name"] = name
-    if position_type:
-        params["position_type"] = position_type
-    if political_affiliation:
-        params["political_affiliation"] = political_affiliation
-    if school:
-        params["school"] = school
-    if appointed_by:
-        params["appointed_by"] = appointed_by
-    if selection_method:
-        params["selection_method"] = selection_method
-    if limit:
-        params["hit"] = limit  # V4 uses 'hit' instead of 'limit'
-
-    headers = {"Authorization": f"Token {API_KEY}"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.courtlistener.com/api/rest/v4/search/",
-                params=params,
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if ctx:
-                await ctx.info(f"Found {data.get('count', 0)} people")
-            else:
-                logger.info(f"Found {data.get('count', 0)} people")
-
-            return data
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Search error: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    """Search judges and legal professionals in the CourtListener database."""
+    return await _search_courtlistener(
+        ctx=ctx,
+        resource_type="people",
+        search_type="p",
+        q=q,
+        order_by=order_by,
+        limit=limit,
+        filters={
+            "name": name,
+            "position_type": position_type,
+            "political_affiliation": political_affiliation,
+            "school": school,
+            "appointed_by": appointed_by,
+            "selection_method": selection_method,
+        },
+    )

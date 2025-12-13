@@ -1,6 +1,6 @@
 """Test citeurl integration with CourtListener MCP server."""
 
-from citeurl import Citator, cite, list_cites
+from citeurl import Citator, cite, list_cites  # type: ignore[import-untyped]
 from loguru import logger
 import pytest
 
