@@ -1,7 +1,6 @@
 """Tests for the CourtListener MCP server."""
 
 import asyncio
-import json
 from typing import Any
 
 from fastmcp import Client
@@ -9,41 +8,21 @@ from fastmcp.exceptions import ToolError
 from loguru import logger
 import pytest
 
-from app.server import mcp
-
-
-@pytest.fixture
-def client() -> Client[Any]:
-    """Create a test client connected to the real server.
-
-    Returns
-    -------
-    Client
-        A FastMCP test client connected to the server instance.
-
-    """
-    return Client(mcp)
-
 
 @pytest.mark.asyncio
 async def test_status_tool(client: Client[Any]) -> None:
     """Test the status tool returns expected server information.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
         result = await client.call_tool("status", {})
 
-        # Check response structure
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
-
-        # Parse JSON response
-        data = json.loads(response)
+        # Check response structure - use result.data for parsed response
+        assert not result.is_error
+        data = result.data
 
         # Verify expected fields
         assert data["status"] == "healthy"
@@ -66,7 +45,7 @@ async def test_status_tool(client: Client[Any]) -> None:
 
         # Verify server section
         assert data["server"]["tools_available"] == ["search", "get", "citation"]
-        assert data["server"]["transport"] == "streamable-http"
+        assert data["server"]["transport"] in ["stdio", "http", "sse"]
         assert (
             data["server"]["api_base"] == "https://www.courtlistener.com/api/rest/v4/"
         )
@@ -78,10 +57,8 @@ async def test_status_tool(client: Client[Any]) -> None:
 async def test_imported_search_tools_available(client: Client[Any]) -> None:
     """Test that search tools were properly imported with prefix.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -109,10 +86,8 @@ async def test_imported_search_tools_available(client: Client[Any]) -> None:
 async def test_imported_get_tools_available(client: Client[Any]) -> None:
     """Test that get tools were properly imported with prefix.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -140,10 +115,8 @@ async def test_imported_get_tools_available(client: Client[Any]) -> None:
 async def test_search_opinions_tool(client: Client[Any]) -> None:
     """Test the search opinions tool with real API call.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -152,11 +125,8 @@ async def test_search_opinions_tool(client: Client[Any]) -> None:
             "search_opinions", {"q": "miranda", "court": "scotus", "limit": 5}
         )
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
-
-        # Parse JSON response
-        data = json.loads(response)
+        assert not result.is_error
+        data = result.data
 
         # Verify response structure
         assert "count" in data
@@ -181,21 +151,16 @@ async def test_search_opinions_tool(client: Client[Any]) -> None:
 async def test_get_court_tool(client: Client[Any]) -> None:
     """Test the get court tool with a known court ID.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
         # Get info for Supreme Court
         result = await client.call_tool("get_court", {"court_id": "scotus"})
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
-
-        # Parse JSON response
-        data = json.loads(response)
+        assert not result.is_error
+        data = result.data
 
         # Verify court data
         assert "id" in data
@@ -210,10 +175,8 @@ async def test_get_court_tool(client: Client[Any]) -> None:
 async def test_search_with_date_filters(client: Client[Any]) -> None:
     """Test search with date range filters.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -228,10 +191,8 @@ async def test_search_with_date_filters(client: Client[Any]) -> None:
             },
         )
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
-
-        data = json.loads(response)
+        assert not result.is_error
+        data = result.data
 
         assert "count" in data
         assert "results" in data
@@ -251,10 +212,8 @@ async def test_search_with_date_filters(client: Client[Any]) -> None:
 async def test_error_handling(client: Client[Any]) -> None:
     """Test error handling for invalid requests.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -269,10 +228,8 @@ async def test_error_handling(client: Client[Any]) -> None:
 async def test_tool_descriptions(client: Client[Any]) -> None:
     """Test that all tools have proper descriptions.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -302,10 +259,8 @@ async def test_tool_descriptions(client: Client[Any]) -> None:
 async def test_search_people_tool(client: Client[Any]) -> None:
     """Test searching for judges/people in the database.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -313,10 +268,8 @@ async def test_search_people_tool(client: Client[Any]) -> None:
             "search_people", {"q": "Roberts", "position_type": "jud", "limit": 5}
         )
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
-
-        data = json.loads(response)
+        assert not result.is_error
+        data = result.data
 
         assert "count" in data
         assert "results" in data
@@ -342,10 +295,8 @@ async def test_search_people_tool(client: Client[Any]) -> None:
 async def test_concurrent_requests(client: Client[Any]) -> None:
     """Test that the server handles concurrent requests properly.
 
-    Parameters
-    ----------
-    client : Client
-        The FastMCP test client fixture.
+    Args:
+        client: The FastMCP test client fixture.
 
     """
     async with client:
@@ -362,11 +313,8 @@ async def test_concurrent_requests(client: Client[Any]) -> None:
         assert len(results) == 3
 
         for result in results:
-            assert len(result) == 1
-            assert result[0].text  # type: ignore[attr-defined]
-
-            # Parse and verify JSON
-            data = json.loads(result[0].text)  # type: ignore[attr-defined]
+            assert not result.is_error
+            data = result.data
             assert isinstance(data, dict)
             assert "error" not in data or data.get("error") is None
 
