@@ -44,16 +44,16 @@ async def _fetch_resource(
     await ctx.info(f"Getting {resource_type} with ID: {resource_id}")
 
     headers = get_auth_headers()
-    http_client = get_http_client(ctx)
 
     try:
-        response = await http_client.get(
-            f"{config.courtlistener_base_url}{endpoint}/{resource_id}/",
-            headers=headers,
-        )
-        response.raise_for_status()
-        await ctx.info(f"Successfully retrieved {resource_type} {resource_id}")
-        return response.json()
+        async with get_http_client(ctx) as http_client:
+            response = await http_client.get(
+                f"{config.courtlistener_base_url}{endpoint}/{resource_id}/",
+                headers=headers,
+            )
+            response.raise_for_status()
+            await ctx.info(f"Successfully retrieved {resource_type} {resource_id}")
+            return response.json()
 
     except httpx.HTTPStatusError as e:
         await ctx.error(f"HTTP error getting {resource_type}: {e}")

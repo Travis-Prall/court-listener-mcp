@@ -187,20 +187,32 @@ async def setup() -> None:
 _setup_complete = False
 
 
+async def ensure_setup_async() -> None:
+    """Ensure setup has been run (async version).
+
+    This function can be called from async code to ensure the server
+    tools have been imported. It's safe to call multiple times.
+    """
+    global _setup_complete
+    if not _setup_complete:
+        await setup()
+        _setup_complete = True
+
+
 def ensure_setup() -> None:
-    """Ensure setup has been run (synchronous wrapper for tests and imports).
+    """Ensure setup has been run (synchronous wrapper for tests).
 
     This function can be called from synchronous code to ensure the server
     tools have been imported. It's safe to call multiple times.
+
+    Note: This should only be used in test fixtures, not in the main server code.
+    The main server should use ensure_setup_async() instead to avoid creating
+    multiple event loops.
     """
     global _setup_complete
     if not _setup_complete:
         asyncio.run(setup())
         _setup_complete = True
-
-
-# Run setup when module is imported (needed for test compatibility)
-ensure_setup()
 
 
 def parse_args() -> argparse.Namespace:
@@ -311,8 +323,23 @@ async def run_server(
         raise ValueError(f"Invalid transport: {transport}. Must be one of {VALID_TRANSPORTS}")
 
 
+def _is_broken_pipe_error(exc: BaseException) -> bool:
+    """Check if an exception is or contains a BrokenPipeError.
+
+    This handles both direct BrokenPipeError and ExceptionGroups containing them.
+    """
+    if isinstance(exc, BrokenPipeError):
+        return True
+    if isinstance(exc, ExceptionGroup):
+        return any(_is_broken_pipe_error(e) for e in exc.exceptions)
+    return False
+
+
 async def main() -> None:
     """Run the CourtListener MCP server."""
+    # Set up tools before parsing args (in case of errors during setup)
+    await ensure_setup_async()
+
     args = parse_args()
 
     # CLI args override environment/config values
@@ -333,8 +360,12 @@ async def main() -> None:
 
     try:
         await run_server(transport, host, port, path, log_level)
-    except Exception as e:
-        logger.error(f"Failed to start server: {e}")
+    except BaseException as e:
+        # Handle BrokenPipeError gracefully - this is expected when client disconnects
+        if _is_broken_pipe_error(e):
+            logger.info("Client disconnected (broken pipe)")
+            return
+        logger.error(f"Server error: {e}")
         raise
 
 

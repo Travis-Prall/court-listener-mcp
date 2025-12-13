@@ -64,16 +64,16 @@ async def lookup_citation(
     await ctx.info(f"Looking up citation: {citation}")
 
     headers = get_auth_headers()
-    http_client = get_http_client(ctx)
 
     try:
-        response = await http_client.post(
-            f"{config.courtlistener_base_url}citation-lookup/",
-            headers=headers,
-            data={"text": citation},
-        )
-        response.raise_for_status()
-        data = response.json()
+        async with get_http_client(ctx) as http_client:
+            response = await http_client.post(
+                f"{config.courtlistener_base_url}citation-lookup/",
+                headers=headers,
+                data={"text": citation},
+            )
+            response.raise_for_status()
+            data = response.json()
 
         # Wrap list responses in a dict for MCP compatibility
         if isinstance(data, list):
@@ -128,21 +128,20 @@ async def batch_lookup_citations(
     await ctx.info(f"Looking up {len(citations)} citations")
 
     headers = get_auth_headers()
-    http_client = get_http_client(ctx)
 
     try:
         # Use POST with form data for the citation text
         # Join all citations into one text block separated by spaces
         citation_text = " ".join(citations)
-        response = await http_client.post(
-            f"{config.courtlistener_base_url}citation-lookup/",
-            headers=headers,
-            data={"text": citation_text},
-            timeout=config.courtlistener_timeout * 2,  # Longer timeout for batch requests
-        )
-        response.raise_for_status()
-
-        data = response.json()
+        async with get_http_client(ctx) as http_client:
+            response = await http_client.post(
+                f"{config.courtlistener_base_url}citation-lookup/",
+                headers=headers,
+                data={"text": citation_text},
+                timeout=config.courtlistener_timeout * 2,  # Longer timeout for batch requests
+            )
+            response.raise_for_status()
+            data = response.json()
 
         # Wrap list responses in a dict for MCP compatibility
         if isinstance(data, list):
@@ -519,22 +518,22 @@ async def enhanced_citation_lookup(
     if include_courtlistener:
         try:
             headers = get_auth_headers()
-            http_client = get_http_client(ctx)
-            response = await http_client.post(
-                f"{config.courtlistener_base_url}citation-lookup/",
-                headers=headers,
-                data={"text": citation},
-            )
-            if response.status_code == 200:
-                result["courtlistener_data"] = {
-                    "success": True,
-                    "data": response.json(),
-                }
-            else:
-                result["courtlistener_data"] = {
-                    "success": False,
-                    "error": f"HTTP {response.status_code}: {response.text}",
-                }
+            async with get_http_client(ctx) as http_client:
+                response = await http_client.post(
+                    f"{config.courtlistener_base_url}citation-lookup/",
+                    headers=headers,
+                    data={"text": citation},
+                )
+                if response.status_code == 200:
+                    result["courtlistener_data"] = {
+                        "success": True,
+                        "data": response.json(),
+                    }
+                else:
+                    result["courtlistener_data"] = {
+                        "success": False,
+                        "error": f"HTTP {response.status_code}: {response.text}",
+                    }
         except ValueError:
             result["courtlistener_data"] = {
                 "success": False,

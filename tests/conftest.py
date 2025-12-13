@@ -8,12 +8,15 @@ from fastmcp import Client
 from loguru import logger
 import pytest
 
-from app.server import mcp
+from app.server import ensure_setup, mcp
 
 # Configure test logging
 test_log_path = Path(__file__).parent / "test_logs" / "test.log"
 test_log_path.parent.mkdir(exist_ok=True)
 logger.add(test_log_path, rotation="10 MB", retention="1 week")
+
+# Ensure server tools are set up before any tests run
+ensure_setup()
 
 
 @pytest.fixture
