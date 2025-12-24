@@ -6,7 +6,9 @@ This allows the server to be run with:
     uv run python -m app
 """
 
+import asyncio
+
 from app.server import main
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

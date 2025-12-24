@@ -1,17 +1,33 @@
 #!/usr/bin/env python3
 """Test script to validate CourtListener MCP server tools."""
 
-import asyncio
+from typing import Any
 
 from dotenv import load_dotenv
+from fastmcp import Client
 import httpx
+import pytest
+
+from app.tools.search import search_server
 
 # Load environment variables
 load_dotenv()
 
 
+@pytest.fixture
+def search_client() -> Client[Any]:
+    """Create a test client connected to the search server.
+
+    Returns:
+        Client: A FastMCP test client connected to the search server.
+
+    """
+    return Client(search_server)
+
+
 # Test if CourtListener API allows public access
-async def test_public_api_access():
+@pytest.mark.asyncio
+async def test_public_api_access() -> None:
     """Test if CourtListener API allows public access."""
     print("🔑 Testing public API access...")
 
@@ -24,157 +40,90 @@ async def test_public_api_access():
                 timeout=10.0,
             )
             if response.status_code == 401:
-                print(
+                pytest.fail(
                     "❌ API requires authentication - need valid COURT_LISTENER_API_KEY"
                 )
-                return False
-            if response.status_code == 200:
+            elif response.status_code == 200:
                 print("✅ Public API access available")
-                return True
-            print(f"⚠️  API returned status {response.status_code}")
-            return False
+            else:
+                pytest.fail(f"⚠️  API returned status {response.status_code}")
     except Exception as e:
-        print(f"❌ API test failed: {e}")
-        return False
+        pytest.fail(f"❌ API test failed: {e}")
 
 
-async def test_search_opinions():
+@pytest.mark.asyncio
+async def test_search_opinions(search_client: Client[Any]) -> None:
     """Test the search opinions functionality directly."""
     print("🔍 Testing search_opinions...")
 
-    from app.tools.search import search_server
-
-    # Get the actual function from the tool
-    opinions_tool = None
-    for tool in search_server.get_tools():
-        if tool.name == "opinions":
-            opinions_tool = tool
-            break
-
-    if not opinions_tool:
-        print("❌ search_opinions tool not found")
-        return False
-
-    try:
-        result = await opinions_tool.handler(q="Miranda", court="scotus", limit=5)
-        print(f"✅ search_opinions PASSED - Found {result.get('count', 0)} results")
-        return True
-    except ValueError as e:
-        if "COURT_LISTENER_API_KEY" in str(e):
-            print(f"❌ search_opinions FAILED - Missing API key: {e}")
-            return False
-        print(f"❌ search_opinions FAILED - ValueError: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ search_opinions FAILED - Error: {e}")
-        return False
+    async with search_client:
+        result = await search_client.call_tool(
+            "opinions", {"q": "Miranda", "court": "scotus", "limit": 5}
+        )
+        assert result.content
+        print("✅ search_opinions PASSED")
 
 
-async def test_search_dockets():
+@pytest.mark.asyncio
+async def test_search_dockets(search_client: Client[Any]) -> None:
     """Test the search dockets functionality directly."""
     print("🔍 Testing search_dockets...")
 
-    from app.tools.search import dockets
-
-    try:
-        result = await dockets(q="patent", court="cafc", limit=5)
-        print(f"✅ search_dockets PASSED - Found {result.get('count', 0)} results")
-        return True
-    except Exception as e:
-        print(f"❌ search_dockets FAILED - Error: {e}")
-        return False
+    async with search_client:
+        result = await search_client.call_tool(
+            "dockets", {"q": "patent", "court": "cafc", "limit": 5}
+        )
+        assert result.content
+        print("✅ search_dockets PASSED")
 
 
-async def test_search_dockets_with_documents():
+@pytest.mark.asyncio
+async def test_search_dockets_with_documents(search_client: Client[Any]) -> None:
     """Test the search dockets with documents functionality."""
     print("🔍 Testing search_dockets_with_documents...")
 
-    from app.tools.search import dockets_with_documents
-
-    try:
-        result = await dockets_with_documents(q="copyright", limit=3)
-        print(
-            f"✅ search_dockets_with_documents PASSED - Found {result.get('count', 0)} results"
+    async with search_client:
+        result = await search_client.call_tool(
+            "dockets_with_documents", {"q": "copyright", "limit": 3}
         )
-        return True
-    except Exception as e:
-        print(f"❌ search_dockets_with_documents FAILED - Error: {e}")
-        return False
+        assert result.content
+        print("✅ search_dockets_with_documents PASSED")
 
 
-async def test_search_recap_documents():
+@pytest.mark.asyncio
+async def test_search_recap_documents(search_client: Client[Any]) -> None:
     """Test the search RECAP documents functionality."""
     print("🔍 Testing search_recap_documents...")
 
-    from app.tools.search import recap_documents
-
-    try:
-        result = await recap_documents(q="motion", court="nysd", limit=5)
-        print(
-            f"✅ search_recap_documents PASSED - Found {result.get('count', 0)} results"
+    async with search_client:
+        result = await search_client.call_tool(
+            "recap_documents", {"q": "motion", "court": "nysd", "limit": 5}
         )
-        return True
-    except Exception as e:
-        print(f"❌ search_recap_documents FAILED - Error: {e}")
-        return False
+        assert result.content
+        print("✅ search_recap_documents PASSED")
 
 
-async def test_search_audio():
+@pytest.mark.asyncio
+async def test_search_audio(search_client: Client[Any]) -> None:
     """Test the search audio functionality."""
     print("🔍 Testing search_audio...")
 
-    from app.tools.search import audio
-
-    try:
-        result = await audio(q="argument", court="scotus", limit=5)
-        print(f"✅ search_audio PASSED - Found {result.get('count', 0)} results")
-        return True
-    except Exception as e:
-        print(f"❌ search_audio FAILED - Error: {e}")
-        return False
+    async with search_client:
+        result = await search_client.call_tool(
+            "audio", {"q": "argument", "court": "scotus", "limit": 5}
+        )
+        assert result.content
+        print("✅ search_audio PASSED")
 
 
-async def test_search_people():
+@pytest.mark.asyncio
+async def test_search_people(search_client: Client[Any]) -> None:
     """Test the search people functionality."""
     print("🔍 Testing search_people...")
 
-    from app.tools.search import people
-
-    try:
-        result = await people(q="Roberts", position_type="jud", limit=5)
-        print(f"✅ search_people PASSED - Found {result.get('count', 0)} results")
-        return True
-    except Exception as e:
-        print(f"❌ search_people FAILED - Error: {e}")
-        return False
-
-
-async def main():
-    """Run all search tool tests."""
-    print("🚀 Starting CourtListener MCP Server Tool Tests")
-    print("=" * 60)
-
-    # Test search tools in order
-    test_results = []
-
-    test_results.append(await test_search_opinions())
-    test_results.append(await test_search_dockets())
-    test_results.append(await test_search_dockets_with_documents())
-    test_results.append(await test_search_recap_documents())
-    test_results.append(await test_search_audio())
-    test_results.append(await test_search_people())
-
-    print("=" * 60)
-    passed = sum(test_results)
-    total = len(test_results)
-    print(f"📊 Results: {passed}/{total} tests passed")
-
-    if passed != total:
-        print("⚠️  Some tests failed - need to investigate and fix issues")
-        return False
-    print("🎉 All search tools tests passed!")
-    return True
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    async with search_client:
+        result = await search_client.call_tool(
+            "people", {"q": "Roberts", "position_type": "jud", "limit": 5}
+        )
+        assert result.content
+        print("✅ search_people PASSED")

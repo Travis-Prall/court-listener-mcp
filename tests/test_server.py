@@ -38,9 +38,9 @@ async def test_status_tool(client: Client[Any]) -> None:
     async with client:
         result = await client.call_tool("status", {})
 
-        # Check response structure
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
+        # Check response structure - result.content is a list of ContentBlocks
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
 
         # Parse JSON response
         data = json.loads(response)
@@ -48,7 +48,7 @@ async def test_status_tool(client: Client[Any]) -> None:
         # Verify expected fields
         assert data["status"] == "healthy"
         assert data["service"] == "CourtListener MCP Server"
-        assert data["version"] == "0.1.0"
+        assert data["version"] == "0.2.0"
         assert "timestamp" in data
         assert "environment" in data
         assert "system" in data
@@ -152,8 +152,8 @@ async def test_search_opinions_tool(client: Client[Any]) -> None:
             "search_opinions", {"q": "miranda", "court": "scotus", "limit": 5}
         )
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
 
         # Parse JSON response
         data = json.loads(response)
@@ -191,8 +191,8 @@ async def test_get_court_tool(client: Client[Any]) -> None:
         # Get info for Supreme Court
         result = await client.call_tool("get_court", {"court_id": "scotus"})
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
 
         # Parse JSON response
         data = json.loads(response)
@@ -228,8 +228,8 @@ async def test_search_with_date_filters(client: Client[Any]) -> None:
             },
         )
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
 
         data = json.loads(response)
 
@@ -313,8 +313,8 @@ async def test_search_people_tool(client: Client[Any]) -> None:
             "search_people", {"q": "Roberts", "position_type": "jud", "limit": 5}
         )
 
-        assert len(result) == 1
-        response = result[0].text  # type: ignore[attr-defined]
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
 
         data = json.loads(response)
 
@@ -362,11 +362,11 @@ async def test_concurrent_requests(client: Client[Any]) -> None:
         assert len(results) == 3
 
         for result in results:
-            assert len(result) == 1
-            assert result[0].text  # type: ignore[attr-defined]
+            assert result.content
+            assert result.content[0].text  # type: ignore[attr-defined]
 
             # Parse and verify JSON
-            data = json.loads(result[0].text)  # type: ignore[attr-defined]
+            data = json.loads(result.content[0].text)  # type: ignore[attr-defined]
             assert isinstance(data, dict)
             assert "error" not in data or data.get("error") is None
 
