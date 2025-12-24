@@ -378,7 +378,7 @@ async def parse_citation_with_citeurl(
         Field(description="Use broad matching for more flexible parsing", default=True),
     ] = True,
     ctx: Context | None = None,
-) -> dict[str, str | dict | None]:
+) -> dict[str, Any]:
     """Parse a legal citation using citeurl's advanced citation recognition.
 
     This tool uses the citeurl library to parse legal citations and extract
@@ -452,7 +452,7 @@ async def extract_citations_from_text(
         Field(description="Text containing legal citations to extract"),
     ],
     ctx: Context | None = None,
-) -> dict[str, list | int]:
+) -> dict[str, Any]:
     """Extract all legal citations from a block of text using citeurl.
 
     This tool finds and parses all legal citations within a given text,
@@ -525,7 +525,7 @@ async def enhanced_citation_lookup(
         ),
     ] = True,
     ctx: Context | None = None,
-) -> dict[str, dict | str | bool]:
+) -> dict[str, Any]:
     """Enhanced citation lookup combining citeurl parsing with CourtListener data.
 
     This tool first uses citeurl to parse and validate the citation format,
