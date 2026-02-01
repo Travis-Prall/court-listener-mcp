@@ -5,4 +5,10 @@ This package provides LLM-friendly access to legal cases, opinions, and court da
 through the official CourtListener API v4.
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("court-listener-mcp-server")
+except PackageNotFoundError:
+    # Package is not installed (e.g., running from source)
+    __version__ = "0.1.0"

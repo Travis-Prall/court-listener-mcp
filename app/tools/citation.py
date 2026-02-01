@@ -7,23 +7,17 @@ enhanced lookups combining citeurl and CourtListener data.
 """
 
 from functools import lru_cache
-import os
 from pathlib import Path
 import re
 from typing import Annotated, Any
 
-from citeurl import Citator, cite as citeurl_cite, list_cites
-from dotenv import load_dotenv
+from citeurl import Citator, cite as citeurl_cite, list_cites  # type: ignore[import-untyped]
 from fastmcp import Context, FastMCP
 import httpx
 from loguru import logger
 from pydantic import Field
 
-# Load environment variables
-load_dotenv()
-
-# Get API key from environment
-API_KEY = os.getenv("COURT_LISTENER_API_KEY")
+from app.config import config, get_auth_headers, get_http_client
 
 # Create the citation server
 citation_server: FastMCP[Any] = FastMCP(
@@ -45,7 +39,7 @@ async def lookup_citation(
             description="The citation to look up (e.g., '410 U.S. 113', '2023 WL 12345')"
         ),
     ],
-    ctx: Context | None = None,
+    ctx: Context,
 ) -> dict[str, Any]:
     """Look up a legal citation to find the opinion it references in CourtListener.
 
@@ -57,63 +51,49 @@ async def lookup_citation(
 
     Args:
         citation: The citation string to look up.
-        ctx: Optional FastMCP context for logging and error reporting.
+        ctx: The FastMCP context for logging and accessing shared resources.
 
     Returns:
         dict[str, Any]: The opinion(s) that match the citation, or an error dict if the lookup fails.
 
     Raises:
         ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
+        httpx.HTTPStatusError: If the API request fails.
 
     """
-    if ctx:
-        await ctx.info(f"Looking up citation: {citation}")
-    else:
-        logger.info(f"Looking up citation: {citation}")
+    await ctx.info(f"Looking up citation: {citation}")
 
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = get_auth_headers()
 
     try:
-        async with httpx.AsyncClient() as client:
-            # The citation lookup API uses POST with form data
-            response = await client.post(
-                "https://www.courtlistener.com/api/rest/v4/citation-lookup/",
+        async with get_http_client(ctx) as http_client:
+            response = await http_client.post(
+                f"{config.courtlistener_base_url}citation-lookup/",
                 headers=headers,
                 data={"text": citation},
-                timeout=30.0,
             )
             response.raise_for_status()
-            result: dict[str, Any] = response.json()
+            data = response.json()
 
-            if ctx:
-                await ctx.info(f"Successfully looked up citation: {citation}")
-            else:
-                logger.info(f"Successfully looked up citation: {citation}")
+        # Wrap list responses in a dict for MCP compatibility
+        if isinstance(data, list):
+            result: dict[str, Any] = {
+                "citation": citation,
+                "count": len(data),
+                "results": data,
+            }
+        else:
+            result = data
 
-            return result
+        await ctx.info(f"Successfully looked up citation: {citation}")
+        return result
 
     except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error looking up citation: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"HTTP error looking up citation: {e}")
+        raise
     except Exception as e:
-        error_msg = f"Error looking up citation: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"Error looking up citation: {e}")
+        raise
 
 
 @citation_server.tool()
@@ -126,7 +106,7 @@ async def batch_lookup_citations(
             max_length=100,
         ),
     ],
-    ctx: Context | None = None,
+    ctx: Context,
 ) -> dict[str, Any]:
     """Look up multiple legal citations in a single request.
 
@@ -135,66 +115,53 @@ async def batch_lookup_citations(
 
     Args:
         citations: List of citation strings to look up (max 100).
-        ctx: Optional FastMCP context for logging and error reporting.
+        ctx: The FastMCP context for logging and accessing shared resources.
 
     Returns:
         dict[str, Any]: A dictionary mapping each citation to its corresponding opinion(s).
 
     Raises:
         ValueError: If COURT_LISTENER_API_KEY is not found in environment variables.
+        httpx.HTTPStatusError: If the API request fails.
 
     """
-    if ctx:
-        await ctx.info(f"Looking up {len(citations)} citations")
-    else:
-        logger.info(f"Looking up {len(citations)} citations")
+    await ctx.info(f"Looking up {len(citations)} citations")
 
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {"Authorization": f"Token {API_KEY}"}
+    headers = get_auth_headers()
 
     try:
-        async with httpx.AsyncClient() as client:
-            # Use POST with form data for the citation text
-            # Join all citations into one text block separated by spaces
-            citation_text = " ".join(citations)
-            response = await client.post(
-                "https://www.courtlistener.com/api/rest/v4/citation-lookup/",
+        # Use POST with form data for the citation text
+        # Join all citations into one text block separated by spaces
+        citation_text = " ".join(citations)
+        async with get_http_client(ctx) as http_client:
+            response = await http_client.post(
+                f"{config.courtlistener_base_url}citation-lookup/",
                 headers=headers,
                 data={"text": citation_text},
-                timeout=60.0,  # Longer timeout for batch requests
+                timeout=config.courtlistener_timeout * 2,  # Longer timeout for batch requests
             )
             response.raise_for_status()
+            data = response.json()
 
-            result = response.json()
+        # Wrap list responses in a dict for MCP compatibility
+        if isinstance(data, list):
+            result: dict[str, Any] = {
+                "citations_requested": citations,
+                "count": len(data),
+                "results": data,
+            }
+        else:
+            result = data
 
-            if ctx:
-                await ctx.info(f"Successfully looked up {len(citations)} citations")
-            else:
-                logger.info(f"Successfully looked up {len(citations)} citations")
-
-            return result
+        await ctx.info(f"Successfully looked up {len(citations)} citations")
+        return result
 
     except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error in batch citation lookup: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"HTTP error in batch citation lookup: {e}")
+        raise
     except Exception as e:
-        error_msg = f"Error in batch citation lookup: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"Error in batch citation lookup: {e}")
+        raise
 
 
 @citation_server.tool()
@@ -203,8 +170,8 @@ async def verify_citation_format(
         str,
         Field(description="The citation to verify"),
     ],
-    ctx: Context | None = None,
-) -> dict[str, str | bool | list[str] | None]:
+    ctx: Context,
+) -> dict[str, Any]:
     """Verify if a citation string is in a valid format using citeurl's advanced parsing.
 
     This tool performs validation using citeurl's comprehensive citation templates
@@ -215,7 +182,7 @@ async def verify_citation_format(
 
     Args:
         citation: The citation string to verify.
-        ctx: Optional FastMCP context for logging.
+        ctx: The FastMCP context for logging.
 
     Returns:
         dict[str, str | bool | list[str] | None]: A dictionary containing validation results with:
@@ -226,10 +193,7 @@ async def verify_citation_format(
             - citation: The original citation string
 
     """
-    if ctx:
-        await ctx.info(f"Verifying citation format: {citation}")
-    else:
-        logger.info(f"Verifying citation format: {citation}")
+    await ctx.info(f"Verifying citation format: {citation}")
 
     citation_stripped = citation.strip()
 
@@ -307,7 +271,6 @@ async def verify_citation_format(
         }
 
         matched_format = None
-        matched_format = None
         for format_name, pattern in basic_patterns.items():
             if re.match(pattern, citation_stripped, re.IGNORECASE):
                 matched_format = format_name
@@ -329,11 +292,7 @@ async def verify_citation_format(
             ],
         }
 
-    if ctx:
-        await ctx.info(f"Citation format verification complete: {result['valid']}")
-    else:
-        logger.info(f"Citation format verification complete: {result['valid']}")
-
+    await ctx.info(f"Citation format verification complete: {result['valid']}")
     return result
 
 
@@ -369,12 +328,12 @@ async def parse_citation_with_citeurl(
             description="The citation to parse (e.g., '410 U.S. 113', '42 USC § 1988')"
         ),
     ],
+    ctx: Context,
     broad: Annotated[
         bool,
         Field(description="Use broad matching for more flexible parsing", default=True),
     ] = True,
-    ctx: Context | None = None,
-) -> dict[str, str | dict | None]:
+) -> dict[str, Any]:
     """Parse a legal citation using citeurl's advanced citation recognition.
 
     This tool uses the citeurl library to parse legal citations and extract
@@ -388,18 +347,15 @@ async def parse_citation_with_citeurl(
 
     Args:
         citation: The citation string to parse.
+        ctx: The FastMCP context for logging.
         broad: Whether to use broad matching for flexible parsing.
-        ctx: Optional FastMCP context for logging.
 
     Returns:
         dict[str, str | dict | None]: A dictionary containing the parsed citation data,
             including success status, original citation, and detailed parsing results.
 
     """
-    if ctx:
-        await ctx.info(f"Parsing citation with citeurl: {citation}")
-    else:
-        logger.info(f"Parsing citation with citeurl: {citation}")
+    await ctx.info(f"Parsing citation with citeurl: {citation}")
 
     try:
         citator = get_citator()
@@ -425,20 +381,12 @@ async def parse_citation_with_citeurl(
             },
         }
 
-        if ctx:
-            await ctx.info(f"Successfully parsed citation: {parsed_citation.text}")
-        else:
-            logger.info(f"Successfully parsed citation: {parsed_citation.text}")
-
+        await ctx.info(f"Successfully parsed citation: {parsed_citation.text}")
         return result
 
     except Exception as e:
-        error_msg = f"Error parsing citation with citeurl: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"Error parsing citation with citeurl: {e}")
+        raise
 
 
 @citation_server.tool()
@@ -447,8 +395,8 @@ async def extract_citations_from_text(
         str,
         Field(description="Text containing legal citations to extract"),
     ],
-    ctx: Context | None = None,
-) -> dict[str, list | int]:
+    ctx: Context,
+) -> dict[str, Any]:
     """Extract all legal citations from a block of text using citeurl.
 
     This tool finds and parses all legal citations within a given text,
@@ -456,7 +404,7 @@ async def extract_citations_from_text(
 
     Args:
         text: The text containing legal citations to extract.
-        ctx: Optional FastMCP context for logging.
+        ctx: The FastMCP context for logging.
 
     Returns:
         dict[str, list | int]: A dictionary containing:
@@ -466,10 +414,7 @@ async def extract_citations_from_text(
             - error (optional): Error message if extraction failed
 
     """
-    if ctx:
-        await ctx.info(f"Extracting citations from text ({len(text)} characters)")
-    else:
-        logger.info(f"Extracting citations from text ({len(text)} characters)")
+    await ctx.info(f"Extracting citations from text ({len(text)} characters)")
 
     try:
         citator = get_citator()
@@ -492,20 +437,12 @@ async def extract_citations_from_text(
             "text_length": len(text),
         }
 
-        if ctx:
-            await ctx.info(f"Found {len(citations)} citations in text")
-        else:
-            logger.info(f"Found {len(citations)} citations in text")
-
+        await ctx.info(f"Found {len(citations)} citations in text")
         return result
 
     except Exception as e:
-        error_msg = f"Error extracting citations from text: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+        await ctx.error(f"Error extracting citations from text: {e}")
+        raise
 
 
 @citation_server.tool()
@@ -514,14 +451,14 @@ async def enhanced_citation_lookup(
         str,
         Field(description="The citation to look up and analyze"),
     ],
+    ctx: Context,
     include_courtlistener: Annotated[
         bool,
         Field(
             description="Whether to also perform CourtListener API lookup", default=True
         ),
     ] = True,
-    ctx: Context | None = None,
-) -> dict[str, dict | str | bool]:
+) -> dict[str, Any]:
     """Enhanced citation lookup combining citeurl parsing with CourtListener data.
 
     This tool first uses citeurl to parse and validate the citation format,
@@ -536,17 +473,14 @@ async def enhanced_citation_lookup(
 
     Args:
         citation: The citation string to look up and analyze.
+        ctx: The FastMCP context for logging and accessing shared resources.
         include_courtlistener: Whether to include CourtListener API lookup.
-        ctx: Optional FastMCP context for logging.
 
     Returns:
         dict[str, dict | str | bool]: A dictionary containing the enhanced citation information.
 
     """
-    if ctx:
-        await ctx.info(f"Enhanced lookup for citation: {citation}")
-    else:
-        logger.info(f"Enhanced lookup for citation: {citation}")
+    await ctx.info(f"Enhanced lookup for citation: {citation}")
 
     result = {
         "citation": citation,
@@ -581,15 +515,14 @@ async def enhanced_citation_lookup(
         }
 
     # Then, lookup in CourtListener if requested and API key available
-    if include_courtlistener and API_KEY:
+    if include_courtlistener:
         try:
-            headers = {"Authorization": f"Token {API_KEY}"}
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://www.courtlistener.com/api/rest/v4/citation-lookup/",
+            headers = get_auth_headers()
+            async with get_http_client(ctx) as http_client:
+                response = await http_client.post(
+                    f"{config.courtlistener_base_url}citation-lookup/",
                     headers=headers,
                     data={"text": citation},
-                    timeout=30.0,
                 )
                 if response.status_code == 200:
                     result["courtlistener_data"] = {
@@ -601,16 +534,16 @@ async def enhanced_citation_lookup(
                         "success": False,
                         "error": f"HTTP {response.status_code}: {response.text}",
                     }
+        except ValueError:
+            result["courtlistener_data"] = {
+                "success": False,
+                "error": "COURT_LISTENER_API_KEY not found",
+            }
         except Exception as e:
             result["courtlistener_data"] = {
                 "success": False,
                 "error": f"CourtListener API error: {e}",
             }
-    elif not API_KEY:
-        result["courtlistener_data"] = {
-            "success": False,
-            "error": "COURT_LISTENER_API_KEY not found",
-        }
 
     # Combine information
     citeurl_analysis = result.get("citeurl_analysis", {})
@@ -639,9 +572,5 @@ async def enhanced_citation_lookup(
             "available_sources": available_sources,
         }
 
-    if ctx:
-        await ctx.info(f"Enhanced lookup complete for: {citation}")
-    else:
-        logger.info(f"Enhanced lookup complete for: {citation}")
-
+    await ctx.info(f"Enhanced lookup complete for: {citation}")
     return result
