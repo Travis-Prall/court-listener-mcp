@@ -1,31 +1,33 @@
 """pytest configuration for CourtListener MCP tests."""
 
-import asyncio
 from pathlib import Path
+from typing import Any
 
 from _pytest.config import Config
+from fastmcp import Client
 from loguru import logger
 import pytest
+
+from app.server import ensure_setup, mcp
 
 # Configure test logging
 test_log_path = Path(__file__).parent / "test_logs" / "test.log"
 test_log_path.parent.mkdir(exist_ok=True)
 logger.add(test_log_path, rotation="10 MB", retention="1 week")
 
+# Ensure server tools are set up before any tests run
+ensure_setup()
 
-@pytest.fixture(scope="session")
-def event_loop() -> asyncio.AbstractEventLoop:
-    """Create an instance of the default event loop for the test session.
 
-    Yields
-    ------
-    asyncio.AbstractEventLoop
-        The event loop instance for the test session.
+@pytest.fixture
+def client() -> Client[Any]:
+    """Create a test client connected to the MCP server.
+
+    Returns:
+        A FastMCP test client connected to the server instance.
 
     """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+    return Client(mcp)
 
 
 def pytest_configure(config: Config) -> None:

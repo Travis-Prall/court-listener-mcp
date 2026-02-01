@@ -21,6 +21,7 @@ dependencies = [
   "python-dotenv>=1.0.0",
   "anyio>=3.0.0",
   "pydantic>=2.0.0",
+  "pydantic-settings>=2.0.0",
   "psutil>=7.0.0",
   "citeurl[full]>=11.5.1",
 ]
@@ -35,24 +36,22 @@ Issues = "https://github.com/Travis-Prall/issues"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
   # Testing
   "pytest>=8.3.0",
   "pytest-asyncio>=0.24.0",
   "pytest-cov>=6.0.0",
+  "respx>=0.22.0",
   # Code quality
   "mypy>=1.12.0",
   "ruff>=0.8.0",
-  "pydantic>=2.0.0", # Add pydantic here as well for mypy plugin
+  "types-psutil>=6.0.0",
   # Development tools
   "ipython>=8.28.0",
   "rich>=13.9.0",
   "httpx-sse>=0.4.0",
 ]
-
-[tool.uv.sources]
-# Add any custom package sources if needed
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
