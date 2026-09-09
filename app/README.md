@@ -60,25 +60,17 @@ async with Client("http://localhost:8000/mcp/") as client:
 | get_court                    | court_id (required)                                                                                   | Get detailed court information                   |
 | get_person                   | person_id (required)                                                                                  | Get detailed person/judge information            |
 | get_cluster                  | cluster_id (required)                                                                                 | Get opinion cluster information                  |
-| lookup_citation              | citation (required)                                                                                   | Look up legal citation                           |
-| batch_lookup_citations       | citations (list, required)                                                                            | Batch lookup of multiple citations               |
-| verify_citation_format       | citation (required)                                                                                   | Verify citation format using citeurl             |
-| parse_citation_with_citeurl  | citation (required), broad (bool)                                                                     | Parse and analyze legal citations                |
-| extract_citations_from_text  | text (required)                                                                                       | Extract all legal citations from a block of text |
-| enhanced_citation_lookup     | citation (required), include_courtlistener (bool)                                                     | Enhanced citation lookup with citeurl & CL data  |
-| list_titles                  | (none)                                                                                                | List all CFR titles                              |
-| list_agencies                | (none)                                                                                                | List all federal agencies                        |
-| search_regulations           | query (required), max_results                                                                         | Search federal regulations                       |
-| list_all_corrections         | correction_date                                                                                       | List all editorial corrections                   |
-| list_corrections_by_title    | title_number                                                                                          | List corrections for a specific title            |
-| get_search_suggestions       | partial_term, max_suggestions                                                                         | Get search term suggestions                      |
-| get_search_summary           | query                                                                                                 | Get aggregated search summary                    |
-| get_title_search_counts      | query                                                                                                 | Get search result counts by title                |
-| get_daily_search_counts      | query, start_date, end_date                                                                           | Get daily search counts                          |
-| get_ancestry                 | date, title_number, part_number, section_number                                                       | Get hierarchical ancestry path                   |
-| get_title_structure          | date, title_number                                                                                    | Get full title structure                         |
-| get_source_xml               | date, title, part, section                                                                            | Download source XML for regulation               |
-| get_source_json              | date, title, chapter, part                                                                            | Get regulatory content as JSON                   |
+| citation_lookup_citation     | citation (required) — API key required                 | Find the opinion a citation references            |
+| citation_batch_lookup_citations | citations (list, required) — API key required       | Look up multiple citations in one request         |
+| citation_batch_lookup        | citations (list, required) — API key required          | Batch citation lookup with details                |
+| citation_get_citations       | citation (required) — API key required                 | Look up citations found in a text block           |
+| citation_get_citation_details | citation_id (required) — API key required             | Detailed information for a citation ID            |
+| citation_enhanced_citation_lookup | citation (required), include_courtlistener (bool) | Enhanced lookup with citeurl & CourtListener data |
+| citation_parse_citation      | citation (required)                                    | Parse a citation into its components              |
+| citation_validate_citation   | citation (required)                                    | Validate citation format and structure            |
+| citation_verify_citation_format | citation (required)                                 | Verify citation format via citeurl                |
+| citation_parse_citation_with_citeurl | citation (required), broad (bool)              | Parse citations with citeurl recognition          |
+| citation_extract_citations_from_text | text (required)                                | Extract all citations from a block of text        |
 
 ## Usage Examples
 

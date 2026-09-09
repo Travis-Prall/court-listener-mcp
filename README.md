@@ -202,9 +202,16 @@ The CourtListener MCP Server provides these production-ready tools (see [app/REA
   - `search_people` — Search judges and legal professionals
 - **Entity Retrieval:**
   - `get_opinion`, `get_docket`, `get_audio`, `get_court`, `get_person`, `get_cluster`
-- **Citation & Regulation Tools:**
-  - `lookup_citation`, `batch_lookup_citations`, `verify_citation_format`, `parse_citation_with_citeurl`, `extract_citations_from_text`, `enhanced_citation_lookup`
-  - `list_titles`, `list_agencies`, `search_regulations`, `list_all_corrections`, `list_corrections_by_title`, `get_search_suggestions`, `get_search_summary`, `get_title_search_counts`, `get_daily_search_counts`, `get_ancestry`, `get_title_structure`, `get_source_xml`, `get_source_json`
+- **Citation Tools (CourtListener API + citeurl):**
+  - `citation_lookup_citation` — Find the opinion a citation references (API key required)
+  - `citation_batch_lookup_citations` — Look up multiple citations in one request (API key required)
+  - `citation_batch_lookup` — Batch citation lookup with details (API key required)
+  - `citation_get_citations` — Look up citations found in a text block (API key required)
+  - `citation_get_citation_details` — Detailed information for a citation ID (API key required)
+  - `citation_enhanced_citation_lookup` — Citeurl parsing combined with CourtListener data (API key optional)
+  - `citation_parse_citation` / `citation_parse_citation_with_citeurl` — Parse citations offline with citeurl
+  - `citation_validate_citation` / `citation_verify_citation_format` — Validate citation format offline
+  - `citation_extract_citations_from_text` — Extract all citations from a block of text (offline)
 
 See [app/README.md](app/README.md) for a full reference of all tools, parameters, and usage examples.
 
