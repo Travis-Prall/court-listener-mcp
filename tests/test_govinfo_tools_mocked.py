@@ -218,10 +218,7 @@ async def test_get_uscode_title(client: Client[Any], api_key: str) -> None:
         assert data["count"] == USC_TITLE_RESULT_COUNT
 
         body = json.loads(route.calls.last.request.content)
-        assert (
-            body["query"]
-            == "collection:USCODE AND title:42 AND chapter:7 AND section:540b"
-        )
+        assert body["query"] == "collection:USCODE AND title:42 AND 7 AND 540b"
         assert body["sorts"] == [{"field": "title", "sortOrder": "ASC"}]
 
 
@@ -529,9 +526,8 @@ async def test_search_statutes_all_filters(client: Client[Any], api_key: str) ->
         body = json.loads(route.calls.last.request.content)
         assert body["query"] == (
             "collection:USCODE AND (maritime law) AND congress:118"
-            " AND title:46 AND section:30101"
-            " AND publishdate:[2020-01-01 TO *]"
-            " AND publishdate:[* TO 2024-12-31]"
+            " AND title:46 AND 30101"
+            " AND publishdate:range(2020-01-01,2024-12-31)"
         )
 
 
@@ -591,8 +587,7 @@ async def test_get_public_laws_private_law_with_dates(
         assert body["query"] == (
             "collection:PLAW AND congress:118"
             " AND (docClass:private OR title:private) AND 118priv14"
-            " AND publishdate:[2023-01-01 TO *]"
-            " AND publishdate:[* TO 2024-06-30]"
+            " AND publishdate:range(2023-01-01,2024-06-30)"
         )
 
 
