@@ -184,8 +184,7 @@ async with Client("http://localhost:8785/mcp/") as client:
 
     # Search for legal opinions
     result = await client.call_tool(
-        "search_opinions",
-        {"query": "first amendment", "court": "scotus"}
+        "search_opinions", {"query": "first amendment", "court": "scotus"}
     )
     print(result)
 ```
@@ -217,7 +216,7 @@ If you prefer to run without Docker:
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.14+
 - [uv](https://github.com/astral-sh/uv) for dependency management
 - Internet connection for CourtListener API access
 
@@ -328,6 +327,16 @@ Pre-built images are available from:
 |----------|-------|
 | Docker Hub | `vesha/court-listener-mcp:latest` |
 | GitHub Container Registry | `ghcr.io/travis-prall/court-listener-mcp:latest` |
+
+Images are published to the GitHub Container Registry automatically by [GitHub Actions](.github/workflows/docker-publish.yml) on every push to `main` and on `v*` version tags. Multi-arch builds (`linux/amd64` and `linux/arm64`) are supported.
+
+## 💖 Support
+
+If you find this project useful, please consider supporting its maintainer. It's completely optional, but always appreciated:
+
+<a href="https://www.buymeacoffee.com/travisprall"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=travisprall&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" alt="Buy travisprall a coffee"></a>
+
+Prefer crypto? See [DONATE.md](DONATE.md) for donation addresses.
 
 ---
 

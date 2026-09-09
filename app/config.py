@@ -8,7 +8,9 @@ class Config(BaseSettings):
     """Configuration for CourtListener MCP Server."""
 
     # Server settings
-    host: str = "0.0.0.0"
+    # Binding to all interfaces is intentional so the containerized MCP
+    # server is reachable from outside its container.
+    host: str = "0.0.0.0"  # ruff: ignore[hardcoded-bind-all-interfaces]
     mcp_port: int = 8785
 
     # Logging

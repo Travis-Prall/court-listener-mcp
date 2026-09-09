@@ -9,7 +9,6 @@ docs/
 
 # Specific configuration files
 ruff.toml
-uv.lock
 
 Other/
 
@@ -71,6 +70,7 @@ pip-delete-this-directory.txt
 .env.*
 *.env
 !.env.example
+!example.env
 .env.local
 .env.*.local
 
@@ -172,9 +172,6 @@ dist/
 .ipynb_checkpoints
 *.ipynb
 
-# pyenv
-.python-version
-
 # pipenv
 Pipfile.lock
 
@@ -228,6 +225,6 @@ secrets/
 local/
 .local/
 
-.github
+.clinerules
 .ruff_cache
-uv.lock
+AGENTS.md

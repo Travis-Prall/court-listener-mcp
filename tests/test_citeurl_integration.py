@@ -1,6 +1,9 @@
 """Test citeurl integration with CourtListener MCP server."""
 
-from citeurl import Citator, cite, list_cites
+# Pytest assertions are the idiomatic test mechanism in this file.
+# ruff: file-ignore[assert]
+
+from citeurl import Citator, cite, list_cites  # type: ignore[import-untyped]
 from loguru import logger
 import pytest
 

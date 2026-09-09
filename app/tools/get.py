@@ -1,29 +1,87 @@
 """Get tools for CourtListener MCP server."""
 
-import os
 from typing import Annotated, Any
 
-from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
 import httpx
-from loguru import logger
 from pydantic import Field
 
-# Load environment variables
-load_dotenv()
-
-# Get API key from environment
-API_KEY = os.getenv("COURT_LISTENER_API_KEY")
+from app.tools.common import (
+    API_BASE_URL,
+    API_KEY,
+    DEFAULT_TIMEOUT,
+    auth_headers,
+    log_error,
+    log_info,
+)
 
 # Create the get server
 get_server: FastMCP[Any] = FastMCP(
     name="CourtListener Get Server",
-    instructions="Retrieval server for CourtListener legal database providing direct access to specific records by ID. "
-    "This server enables fetching individual records including: court opinions, opinion clusters, court information, "
-    "dockets, oral argument audio recordings, and judge/legal professional profiles. "
-    "Each tool requires the specific ID of the record to retrieve and returns detailed information about that record. "
-    "Use this server when you have a specific ID and need complete details about a particular legal entity.",
+    instructions=(
+        "Retrieval server for CourtListener legal database providing direct "
+        "access to specific records by ID. This server enables fetching "
+        "individual records including: court opinions, opinion clusters, court "
+        "information, dockets, oral argument audio recordings, and judge/legal "
+        "professional profiles. Each tool requires the specific ID of the "
+        "record to retrieve and returns detailed information about that record. "
+        "Use this server when you have a specific ID and need complete details "
+        "about a particular legal entity."
+    ),
 )
+
+
+async def _fetch_record(
+    endpoint: str,
+    record_label: str,
+    record_id: str,
+    ctx: Context | None,
+    require_api_key: bool = True,
+) -> dict[str, Any]:
+    """Fetch a single record by ID from the CourtListener API.
+
+    Args:
+        endpoint: CourtListener API endpoint segment (e.g., 'opinions').
+        record_label: Human-readable record type used in log messages.
+        record_id: The record ID to retrieve.
+        ctx: Optional FastMCP context for logging and error reporting.
+        require_api_key: Whether the CourtListener API key is required.
+
+    Returns:
+        dict[str, Any]: The record data as returned by the CourtListener API.
+
+    Raises:
+        ValueError: If the CourtListener API key is required but missing.
+        httpx.HTTPStatusError: If the API returns an HTTP error status.
+
+    """
+    await log_info(ctx, f"Getting {record_label} with ID: {record_id}")
+
+    if not API_KEY:
+        if require_api_key:
+            error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
+            await log_error(ctx, error_msg)
+            raise ValueError(error_msg)
+        await log_info(ctx, "Using public API access (no authentication)")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{API_BASE_URL}/{endpoint}/{record_id}/",
+                headers=auth_headers(),
+                timeout=DEFAULT_TIMEOUT,
+            )
+            response.raise_for_status()
+            data: dict[str, Any] = response.json()
+    except httpx.HTTPStatusError as e:
+        await log_error(ctx, f"HTTP error getting {record_label}: {e}")
+        raise
+    except Exception as e:
+        await log_error(ctx, f"Error getting {record_label}: {e}")
+        raise
+
+    await log_info(ctx, f"Successfully retrieved {record_label} {record_id}")
+    return data
 
 
 @get_server.tool()
@@ -40,56 +98,14 @@ async def opinion(
     Returns:
         dict: The opinion data as returned by the CourtListener API.
 
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
+    Note:
+        Works without an API key through public API access; providing the
+        COURT_LISTENER_API_KEY improves rate limits.
 
     """
-    if ctx:
-        await ctx.info(f"Getting opinion with ID: {opinion_id}")
-    else:
-        logger.info(f"Getting opinion with ID: {opinion_id}")
-
-    # API key is optional for public access
-    if not API_KEY:
-        if ctx:
-            await ctx.info("Using public API access (no authentication)")
-        else:
-            logger.info("Using public API access (no authentication)")
-
-    headers = {}
-    if API_KEY:
-        headers["Authorization"] = f"Token {API_KEY}"
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/opinions/{opinion_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved opinion {opinion_id}")
-            else:
-                logger.info(f"Successfully retrieved opinion {opinion_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting opinion: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting opinion: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    return await _fetch_record(
+        "opinions", "opinion", opinion_id, ctx, require_api_key=False
+    )
 
 
 @get_server.tool()
@@ -106,57 +122,12 @@ async def docket(
     Returns:
         dict: The docket data as returned by the CourtListener API.
 
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
+    Note:
+        Requires the COURT_LISTENER_API_KEY environment variable; the shared
+        fetch helper raises ValueError when the key is missing.
 
     """
-    if ctx:
-        await ctx.info(f"Getting docket with ID: {docket_id}")
-    else:
-        logger.info(f"Getting docket with ID: {docket_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {}
-    if API_KEY:
-        headers["Authorization"] = f"Token {API_KEY}"
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/dockets/{docket_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved docket {docket_id}")
-            else:
-                logger.info(f"Successfully retrieved docket {docket_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting docket: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting docket: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    return await _fetch_record("dockets", "docket", docket_id, ctx)
 
 
 @get_server.tool()
@@ -173,57 +144,12 @@ async def audio(
     Returns:
         dict: The audio data as returned by the CourtListener API.
 
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
+    Note:
+        Requires the COURT_LISTENER_API_KEY environment variable; the shared
+        fetch helper raises ValueError when the key is missing.
 
     """
-    if ctx:
-        await ctx.info(f"Getting audio with ID: {audio_id}")
-    else:
-        logger.info(f"Getting audio with ID: {audio_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {}
-    if API_KEY:
-        headers["Authorization"] = f"Token {API_KEY}"
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/audio/{audio_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved audio {audio_id}")
-            else:
-                logger.info(f"Successfully retrieved audio {audio_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting audio: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting audio: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    return await _fetch_record("audio", "audio", audio_id, ctx)
 
 
 @get_server.tool()
@@ -240,57 +166,12 @@ async def cluster(
     Returns:
         dict: The opinion cluster data as returned by the CourtListener API.
 
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
+    Note:
+        Requires the COURT_LISTENER_API_KEY environment variable; the shared
+        fetch helper raises ValueError when the key is missing.
 
     """
-    if ctx:
-        await ctx.info(f"Getting cluster with ID: {cluster_id}")
-    else:
-        logger.info(f"Getting cluster with ID: {cluster_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {}
-    if API_KEY:
-        headers["Authorization"] = f"Token {API_KEY}"
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/clusters/{cluster_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved cluster {cluster_id}")
-            else:
-                logger.info(f"Successfully retrieved cluster {cluster_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting cluster: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting cluster: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    return await _fetch_record("clusters", "cluster", cluster_id, ctx)
 
 
 @get_server.tool()
@@ -307,57 +188,12 @@ async def person(
     Returns:
         dict: The person data as returned by the CourtListener API.
 
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
+    Note:
+        Requires the COURT_LISTENER_API_KEY environment variable; the shared
+        fetch helper raises ValueError when the key is missing.
 
     """
-    if ctx:
-        await ctx.info(f"Getting person with ID: {person_id}")
-    else:
-        logger.info(f"Getting person with ID: {person_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {}
-    if API_KEY:
-        headers["Authorization"] = f"Token {API_KEY}"
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/people/{person_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved person {person_id}")
-            else:
-                logger.info(f"Successfully retrieved person {person_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting person: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting person: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    return await _fetch_record("people", "person", person_id, ctx)
 
 
 @get_server.tool()
@@ -376,54 +212,9 @@ async def court(
     Returns:
         dict: The court data as returned by the CourtListener API.
 
-    Raises:
-        ValueError: If the COURT_LISTENER_API_KEY is not found in environment variables.
+    Note:
+        Requires the COURT_LISTENER_API_KEY environment variable; the shared
+        fetch helper raises ValueError when the key is missing.
 
     """
-    if ctx:
-        await ctx.info(f"Getting court with ID: {court_id}")
-    else:
-        logger.info(f"Getting court with ID: {court_id}")
-
-    if not API_KEY:
-        error_msg = "COURT_LISTENER_API_KEY not found in environment variables"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    headers = {}
-    if API_KEY:
-        headers["Authorization"] = f"Token {API_KEY}"
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://www.courtlistener.com/api/rest/v4/courts/{court_id}/",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-
-            if ctx:
-                await ctx.info(f"Successfully retrieved court {court_id}")
-            else:
-                logger.info(f"Successfully retrieved court {court_id}")
-
-            return response.json()
-
-    except httpx.HTTPStatusError as e:
-        error_msg = f"HTTP error getting court: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
-    except Exception as e:
-        error_msg = f"Error getting court: {e}"
-        if ctx:
-            await ctx.error(error_msg)
-        else:
-            logger.error(error_msg)
-        raise e
+    return await _fetch_record("courts", "court", court_id, ctx)

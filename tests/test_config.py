@@ -1,11 +1,42 @@
 """pytest configuration for CourtListener MCP tests."""
 
+# Pytest assertions are the idiomatic test mechanism in this file.
+# ruff: file-ignore[assert]
+
 import asyncio
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from _pytest.config import Config
 from loguru import logger
 import pytest
+
+from app.config import config, is_debug_enabled, is_development
+
+if TYPE_CHECKING:
+    from _pytest.config import Config
+
+
+def test_is_development(monkeypatch: pytest.MonkeyPatch) -> None:
+    """is_development reflects the configured environment."""
+    monkeypatch.setattr(config, "environment", "development")
+    assert is_development() is True
+    monkeypatch.setattr(config, "environment", "production")
+    assert is_development() is False
+
+
+def test_is_debug_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """is_debug_enabled honors the debug flag and DEBUG log level."""
+    monkeypatch.setattr(config, "courtlistener_debug", False)
+    monkeypatch.setattr(config, "courtlistener_log_level", "INFO")
+    assert is_debug_enabled() is False
+
+    monkeypatch.setattr(config, "courtlistener_debug", True)
+    assert is_debug_enabled() is True
+
+    monkeypatch.setattr(config, "courtlistener_debug", False)
+    monkeypatch.setattr(config, "courtlistener_log_level", "DEBUG")
+    assert is_debug_enabled() is True
+
 
 # Configure test logging
 test_log_path = Path(__file__).parent / "test_logs" / "test.log"

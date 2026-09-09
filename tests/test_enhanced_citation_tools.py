@@ -1,5 +1,8 @@
 """Test the enhanced citation tools."""
 
+# Pytest assertions are the idiomatic test mechanism in this file.
+# ruff: file-ignore[assert]
+
 import json
 from typing import Any
 
