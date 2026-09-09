@@ -1,11 +1,12 @@
-# Use Python 3.12 slim image for smaller size
-FROM python:3.12-slim AS builder
+# Use Python 3.14 slim image for smaller size
+FROM python:3.14-slim AS builder
 
 # Set working directory
-WORKDIR /opt/courtlistener
+WORKDIR /app
 
-# Install system dependencies needed for building
+# Install system dependencies needed for building and uv
 RUN apt-get update && apt-get install -y \
+    curl \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
@@ -15,47 +16,60 @@ RUN pip install --no-cache-dir uv
 # Copy dependency files first (for better caching)
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies (not the local package yet)
+# Install only the dependencies (not the local package)
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Multi-stage build for smaller final image
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Set working directory
-WORKDIR /opt/courtlistener
+WORKDIR /app
 
-# Create non-root user
+# Install only runtime dependencies and uv
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* && \
+    pip install --no-cache-dir uv
+
+# Copy the entire uv environment from builder
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/pyproject.toml /app/uv.lock ./
+
+# Create non-root user first
 RUN groupadd -r courtlistener && useradd -r -g courtlistener -m courtlistener
 
-# Copy virtual environment and project files from builder
-COPY --from=builder /opt/courtlistener/.venv .venv
-COPY --from=builder /opt/courtlistener/pyproject.toml /opt/courtlistener/uv.lock ./
+# Create source directory structure
+WORKDIR /src
 
-# Copy application code
-COPY app ./app
+# Copy application code into /src/app directory
+COPY --chown=courtlistener:courtlistener app /src/app
 
-# Pre-compile Python bytecode for faster startup
-RUN python -m compileall -q ./app .venv/lib
-
-# Set ownership for non-root user
-RUN chown -R courtlistener:courtlistener /opt/courtlistener
+# Ensure proper ownership
+RUN chown -R courtlistener:courtlistener /src
 
 # Switch to non-root user
 USER courtlistener
 
 # Set Python-related environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PATH="/opt/courtlistener/.venv/bin:$PATH"
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/src \
+    PATH="/app/.venv/bin:$PATH" \
+    LOG_LEVEL=INFO \
+    LOG_FORMAT=json \
+    API_BASE_URL=https://www.courtlistener.com/api/rest/v4/
 
-# Expose default MCP port
-EXPOSE 8000
+# Expose port (optional - not needed for stdio but doesn't hurt)
+EXPOSE 8785
 
 # Labels for container metadata
 LABEL org.opencontainers.image.title="CourtListener MCP Server" \
-      org.opencontainers.image.description="MCP server providing LLM access to CourtListener legal database" \
-      org.opencontainers.image.version="0.1.0" \
-      org.opencontainers.image.source="https://github.com/Travis-Prall/court-listener-mcp"
+      org.opencontainers.image.description="Model Context Protocol server providing LLM-friendly access to legal cases and court data through the CourtListener API v4" \
+      org.opencontainers.image.version="0.2.0" \
+      org.opencontainers.image.source="https://github.com/Travis-Prall/court-listener-mcp" \
+      org.opencontainers.image.url="https://www.travisprall.com/" \
+      org.opencontainers.image.vendor="Travis-Prall"
 
-# Default to HTTP transport for container use, bound to all interfaces
-# Override with MCP_TRANSPORT=stdio for CLI integration
-CMD ["python", "-m", "app", "--transport", "http", "--host", "0.0.0.0"]
+# Default command: run the MCP server with streamable-http transport on :8785.
+# docker-compose.yml overrides this with the same command.
+CMD ["python", "-m", "app"]

@@ -1,38 +1,48 @@
-"""pytest configuration for CourtListener MCP tests."""
+"""Shared fixtures for CourtListener MCP server tests.
 
-from pathlib import Path
-from typing import Any
+These fixtures patch the API key bindings in every tool module so that
+key-required behavior is deterministic in tests regardless of whether the
+developer has a real ``COURT_LISTENER_API_KEY`` configured in their
+environment.
+"""
 
-from _pytest.config import Config
-from fastmcp import Client
-from loguru import logger
 import pytest
 
-from app.server import ensure_setup, mcp
+# Every tool module imports API_KEY at import time, so each module-level
+# binding must be patched for key-required branches to be deterministic.
+KEYED_MODULES: tuple[str, ...] = (
+    "app.tools.common",
+    "app.tools.get",
+    "app.tools.search",
+    "app.tools.citation",
+)
 
-# Configure test logging
-test_log_path = Path(__file__).parent / "test_logs" / "test.log"
-test_log_path.parent.mkdir(exist_ok=True)
-logger.add(test_log_path, rotation="10 MB", retention="1 week")
-
-# Ensure server tools are set up before any tests run
-ensure_setup()
+FAKE_API_KEY = "test-api-key-12345"
 
 
 @pytest.fixture
-def client() -> Client[Any]:
-    """Create a test client connected to the MCP server.
+def api_key(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Install a fake CourtListener API key in every tool module.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
 
     Returns:
-        A FastMCP test client connected to the server instance.
+        str: The fake API key installed across all tool modules.
 
     """
-    return Client(mcp)
+    for module_name in KEYED_MODULES:
+        monkeypatch.setattr(f"{module_name}.API_KEY", FAKE_API_KEY)
+    return FAKE_API_KEY
 
 
-def pytest_configure(config: Config) -> None:
-    """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-    )
-    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+@pytest.fixture
+def no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force the CourtListener API key to None in every tool module.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    """
+    for module_name in KEYED_MODULES:
+        monkeypatch.setattr(f"{module_name}.API_KEY", None)
