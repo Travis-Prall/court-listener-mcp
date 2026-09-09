@@ -95,7 +95,12 @@ async def test_status_tool(client: Client[Any]) -> None:
         assert "cpu_percent" in data["system"]
 
         # Verify server section
-        assert data["server"]["tools_available"] == ["search", "get", "citation"]
+        assert data["server"]["tools_available"] == [
+            "search",
+            "get",
+            "citation",
+            "statutes",
+        ]
         assert data["server"]["transport"] == "streamable-http"
         assert (
             data["server"]["api_base"] == "https://www.courtlistener.com/api/rest/v4/"

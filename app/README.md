@@ -1,6 +1,6 @@
 # CourtListener MCP Server v2.0
 
-A comprehensive Model Context Protocol (MCP) server for accessing the CourtListener API v4 and eCFR, providing powerful legal and regulatory research capabilities optimized for Large Language Model (LLM) interactions.
+A comprehensive Model Context Protocol (MCP) server for accessing the CourtListener API v4 and the GovInfo statute collections, providing powerful legal and statutory research capabilities optimized for Large Language Model (LLM) interactions.
 
 > **Latest Update (June 2025):** All MCP tools and modules are documented. Pydantic v2 compatibility, type annotations, and import structure are up-to-date. Server passes all lint checks and includes a comprehensive test suite.
 
@@ -11,6 +11,7 @@ A comprehensive Model Context Protocol (MCP) server for accessing the CourtListe
   - `search.py`: Search tools (opinions, dockets, audio, people, RECAP, regulations)
   - `get.py`: Get tools (opinion, docket, audio, court, person, cluster)
   - `citation.py`: Citation lookup, parsing, batch, and enhanced tools
+  - `govinfo.py`: GovInfo statute search and lookup tools (USC, Statutes at Large, PLAW, COMPS)
 - **`app/models.py`**: Pydantic models for data validation
 - **`app/config.py`**: Configuration and environment variable management
 - **`app/utils.py``: Utility functions (XML/JSON conversion, etc.)
@@ -40,6 +41,7 @@ async with Client("http://localhost:8000/mcp/") as client:
 - **tools/search.py**: Implements search tools for opinions, dockets, audio, people, RECAP, regulations
 - **tools/get.py**: Implements get tools for detailed entity retrieval (opinion, docket, audio, court, person, cluster)
 - **tools/citation.py**: Implements citation lookup, parsing, batch, and enhanced tools
+- **tools/govinfo.py**: Implements GovInfo statute search and lookup tools (USCODE, STATUTE, PLAW, COMPS collections)
 - **models.py**: Pydantic models for API responses and validation
 - **config.py**: Loads environment and configures logging
 - **utils.py**: XML/JSON conversion, helpers
@@ -71,6 +73,12 @@ async with Client("http://localhost:8000/mcp/") as client:
 | citation_verify_citation_format | citation (required)                                 | Verify citation format via citeurl                |
 | citation_parse_citation_with_citeurl | citation (required), broad (bool)              | Parse citations with citeurl recognition          |
 | citation_extract_citations_from_text | text (required)                                | Extract all citations from a block of text        |
+| statutes_search_statutes     | query (required), collection, congress, title_number, section, start_date, end_date, page_size, offset_mark — API key required | Search US statute collections                     |
+| statutes_get_uscode_title    | title_number (required), edition, chapter, section, page_size, offset_mark — API key required | Find USC sections within a title                  |
+| statutes_get_public_laws_by_congress | congress (required), law_type, law_number, start_date, end_date, page_size, offset_mark — API key required | Look up public/private laws by Congress           |
+| statutes_get_statutes_at_large | volume (required), page, congress, page_size, offset_mark — API key required | Search Statutes at Large by volume                |
+| statutes_get_statute_content | package_id (required), content_type, granule_id — API key required | Get statute package summary or download links     |
+| statutes_list_statute_collections | none — no API call                                     | List statute collections with descriptions        |
 
 ## Usage Examples
 
@@ -104,11 +112,23 @@ search_people(q="", position_type="jud")
 extract_citations_from_text(text="See 410 U.S. 113 and 42 USC § 1988.")
 ```
 
+### Search United States Code Sections
+
+```python
+statutes_get_uscode_title(title_number="42", section="540b")
+```
+
+### Look Up Public Laws by Congress
+
+```python
+statutes_get_public_laws_by_congress(congress=117, law_type="public")
+```
+
 ## Common Use Cases
 
 - Legal research by topic, court, or judge
 - Citation verification and lookup
-- Regulatory content retrieval and analysis
+- Statutory lookup and verification (USC, Statutes at Large, public laws)
 - Bulk metadata extraction for LLMs
 
 ## See Also

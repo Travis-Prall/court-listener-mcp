@@ -1,10 +1,10 @@
 # CourtListener MCP Server
 
-A Model Context Protocol (MCP) server that provides LLM-friendly access to the CourtListener legal database and the Electronic Code of Federal Regulations (eCFR) through the official CourtListener API v4. This server enables searching and retrieving legal opinions, court cases, judges, legal documents, and federal regulations for precise legal research and citation verification.
+A Model Context Protocol (MCP) server that provides LLM-friendly access to the CourtListener legal database through the official CourtListener API v4, plus United States statute lookup through the official GovInfo API. This server enables searching and retrieving legal opinions, court cases, judges, legal documents, and enacted federal statutes for precise legal research and citation verification.
 
 ## 🎯 Purpose
 
-The CourtListener MCP Server provides comprehensive access to **legal case data, court opinions, and federal regulations** through the extensive CourtListener and eCFR databases. CourtListener contains millions of legal opinions from federal and state courts, while eCFR provides up-to-date federal regulations.
+The CourtListener MCP Server provides comprehensive access to **legal case data, court opinions, and federal statutes** through the extensive CourtListener and GovInfo databases. CourtListener contains millions of legal opinions from federal and state courts, while GovInfo provides the United States Code, Statutes at Large, and Public and Private Laws.
 
 ## 📋 Key Advantages
 
@@ -16,9 +16,10 @@ The CourtListener MCP Server provides comprehensive access to **legal case data,
   - Complete opinion text for citation verification
   - Structured legal document organization
   - Rich metadata including judges, courts, and dates
-- **Regulatory Research:**
-  - Search and retrieve current federal regulations
-  - Validate regulatory citations and references
+- **Statutory Research:**
+  - Search and retrieve sections of the United States Code
+  - Look up Public and Private Laws by Congress
+  - Access Statutes at Large volumes and content downloads
 - **Legal Research:**
   - Search by judge, court, case name, or content
   - Verify exact legal language and precedents
@@ -60,6 +61,20 @@ Authorization: Token your-token-here
 ```
 
 > **Important**: Don't forget the word "Token" before your actual token value!
+
+## 🏛️ Getting a GovInfo API Key
+
+The statute lookup tools (`statutes_*`) use the GovInfo API from the U.S. Government Publishing Office and **require** a `GOVINFO_API_KEY`.
+
+1. **Get a free key**: Sign up at [api.data.gov](https://api.data.gov/signup/) — the same key works for `api.govinfo.gov`.
+
+2. **Configure the Server**: Add the key to your `.env` file:
+
+   ```bash
+   GOVINFO_API_KEY=your-api-data-gov-key-here
+   ```
+
+GovInfo requests authenticate with an `X-Api-Key` HTTP header. Without the key, all `statutes_*` tools raise an error asking for `GOVINFO_API_KEY` to be set.
 
 ## 🐳 Docker Quick Start (Recommended)
 
@@ -104,6 +119,9 @@ docker run -d \
    ```bash
    # Required: Your CourtListener API Key
    COURT_LISTENER_API_KEY=your-api-key-here
+
+   # Required for statute lookup: Your GovInfo (api.data.gov) API Key
+   GOVINFO_API_KEY=your-govinfo-api-key-here
 
    # Optional: Override defaults
    COURTLISTENER_LOG_LEVEL=INFO
@@ -212,6 +230,13 @@ The CourtListener MCP Server provides these production-ready tools (see [app/REA
   - `citation_parse_citation` / `citation_parse_citation_with_citeurl` — Parse citations offline with citeurl
   - `citation_validate_citation` / `citation_verify_citation_format` — Validate citation format offline
   - `citation_extract_citations_from_text` — Extract all citations from a block of text (offline)
+- **Statute Tools (GovInfo API — `GOVINFO_API_KEY` required):**
+  - `statutes_search_statutes` — Search across USC, Statutes at Large, Public/Private Laws, and Compilations
+  - `statutes_get_uscode_title` — Find USC sections, chapters, and subchapters within a title
+  - `statutes_get_public_laws_by_congress` — Look up public and private laws by Congress
+  - `statutes_get_statutes_at_large` — Search Statutes at Large by volume
+  - `statutes_get_statute_content` — Retrieve package/granule summaries or XML/PDF/text download links
+  - `statutes_list_statute_collections` — List available statute collections (no API call)
 
 See [app/README.md](app/README.md) for a full reference of all tools, parameters, and usage examples.
 
@@ -247,6 +272,9 @@ Create a `.env` file in the project root (see `example.env` for all options):
 # Required
 COURT_LISTENER_API_KEY=your-api-key-here
 
+# Required for statute lookup tools
+GOVINFO_API_KEY=your-api-data-gov-key-here
+
 # Optional (defaults shown)
 COURTLISTENER_BASE_URL=https://www.courtlistener.com/api/rest/v4/
 COURTLISTENER_TIMEOUT=30
@@ -273,7 +301,7 @@ Or use the VS Code task: **Run MCP Server**
 
 ## 💡 Usage Examples
 
-See [app/README.md](app/README.md) for detailed tool usage and examples, including search, citation, and regulatory queries.
+See [app/README.md](app/README.md) for detailed tool usage and examples, including search, citation, and statute queries.
 
 ## 🧪 Testing
 
@@ -320,7 +348,7 @@ See [app/README.md](app/README.md) and [tests/README.md](tests/README.md) for ad
 - [Test Documentation](tests/README.md)
 - [CourtListener API Documentation](https://www.courtlistener.com/api/rest/v4/)
 - [CourtListener API Help](https://www.courtlistener.com/help/api/rest/)
-- [eCFR API Documentation](https://www.ecfr.gov/developers/documentation/api/v1)
+- [GovInfo API Documentation](https://api.govinfo.gov/docs/)
 - [FastMCP Framework](https://github.com/jlowin/fastmcp)
 - [Model Context Protocol](https://spec.modelcontextprotocol.io/)
 
