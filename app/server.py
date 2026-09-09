@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CourtListener MCP Server - FastMCP Implementation."""
+"""CourtListener ++ MCP Server - FastMCP Implementation."""
 
 import asyncio
 from datetime import UTC, datetime
@@ -66,7 +66,7 @@ def is_docker() -> bool:
 
 # Create main server instance
 mcp: FastMCP[Any] = FastMCP(
-    name="CourtListener MCP Server",
+    name="CourtListener ++ MCP Server",
     instructions=(
         "Model Context Protocol server providing LLMs with access to the "
         "CourtListener legal database and United States statutes via the "
@@ -126,7 +126,7 @@ DISABLED_TOOL_GROUPS: list[str] = []
 
 @mcp.tool()
 def status() -> dict[str, Any]:
-    """Check the status of the CourtListener MCP server.
+    """Check the status of the CourtListener ++ MCP server.
 
     Returns:
         A dictionary containing server status, system metrics, and service information.
@@ -150,7 +150,7 @@ def status() -> dict[str, Any]:
 
     return {
         "status": "healthy",
-        "service": "CourtListener MCP Server",
+        "service": "CourtListener ++ MCP Server",
         "version": get_version(),
         "timestamp": datetime.now(UTC).isoformat(),
         "environment": {
@@ -200,7 +200,7 @@ async def health_check(request: Request) -> JSONResponse:
     await request.body()
     return JSONResponse({
         "status": "healthy",
-        "service": "CourtListener MCP Server",
+        "service": "CourtListener ++ MCP Server",
         "version": get_version(),
         "timestamp": datetime.now(UTC).isoformat(),
     })
@@ -238,7 +238,7 @@ def disable_tools_with_missing_api_keys() -> list[str]:
 
 def setup() -> None:
     """Set up the server by mounting subservers."""
-    logger.info("Setting up CourtListener MCP server")
+    logger.info("Setting up CourtListener ++ MCP server")
 
     # Mount search tools under the "search" namespace
     mcp.mount(search_server, namespace="search")
@@ -272,8 +272,8 @@ setup()
 
 
 async def main() -> None:
-    """Run the CourtListener MCP server with HTTP (streamable) transport."""
-    logger.info("Starting CourtListener MCP server with HTTP (streamable) transport")
+    """Run the CourtListener ++ MCP server with HTTP (streamable) transport."""
+    logger.info("Starting CourtListener ++ MCP server with HTTP (streamable) transport")
     logger.info(
         f"Server configuration: host={config.host}, port={config.mcp_port}, "
         f"log_level={config.courtlistener_log_level}"
@@ -293,5 +293,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logger.info("Starting CourtListener MCP server")
+    logger.info("Starting CourtListener ++ MCP server")
     asyncio.run(main())

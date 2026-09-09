@@ -1,4 +1,4 @@
-# CourtListener MCP Server v2.0
+# CourtListener ++ MCP Server
 
 A comprehensive Model Context Protocol (MCP) server for accessing the CourtListener API v4, the GovInfo statute collections, and the Regulations.gov federal rulemaking database, providing powerful legal, statutory, and regulatory research capabilities optimized for Large Language Model (LLM) interactions.
 

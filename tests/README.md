@@ -1,6 +1,6 @@
-# Test Suite for CourtListener MCP Server
+# Test Suite for CourtListener ++ MCP Server
 
-This document describes how to run, understand, and extend the test suite for the CourtListener MCP Server.
+This document describes how to run, understand, and extend the test suite for the CourtListener ++ MCP Server.
 
 ## Running Tests
 

@@ -1,10 +1,10 @@
-# CourtListener MCP Server
+# CourtListener ++ MCP Server
 
 A Model Context Protocol (MCP) server that provides LLM-friendly access to the CourtListener legal database through the official CourtListener API v4, plus United States statute lookup through the official GovInfo API and federal rulemaking document search through the official Regulations.gov API. This server enables searching and retrieving legal opinions, court cases, judges, legal documents, enacted federal statutes, and federal rulemaking documents for precise legal research and citation verification.
 
 ## 🎯 Purpose
 
-The CourtListener MCP Server provides comprehensive access to **legal case data, court opinions, federal statutes, and federal rulemaking documents** through the extensive CourtListener, GovInfo, and Regulations.gov databases. CourtListener contains millions of legal opinions from federal and state courts, GovInfo provides the United States Code, Statutes at Large, and Public and Private Laws, and Regulations.gov indexes federal rulemaking dockets, proposed rules, and final rules.
+The CourtListener ++ MCP Server provides comprehensive access to **legal case data, court opinions, federal statutes, and federal rulemaking documents** through the extensive CourtListener, GovInfo, and Regulations.gov databases. CourtListener contains millions of legal opinions from federal and state courts, GovInfo provides the United States Code, Statutes at Large, and Public and Private Laws, and Regulations.gov indexes federal rulemaking dockets, proposed rules, and final rules.
 
 ## 📋 Key Advantages
 
@@ -95,7 +95,7 @@ The federal rulemaking tools (`regulations_*`) use the official Regulations.gov 
 
 Regulations.gov requests authenticate with an `X-Api-Key` HTTP header. The same automatic startup behavior applies: if `REGULATIONS_API_KEY` is missing, the `regulations_*` tools are disabled and hidden from clients until the key is set and the server is restarted.
 
-**Note:** the Regulations.gov API rejects `page[size]` values below 5, so the search tools enforce a page size between 5 and 250.
+**Note:** the Regulations.gov API rejects `page[size]` values below 5, so `regulations_search_documents` enforces a page size between 5 and 250.
 
 ## ⚙️ Background Tasks (MCP Tasks Extension)
 
@@ -242,7 +242,7 @@ monitoring systems, and container orchestrators:
 
 ```bash
 curl http://localhost:8785/health
-# {"status":"healthy","service":"CourtListener MCP Server","version":"0.2.0",...}
+# {"status":"healthy","service":"CourtListener ++ MCP Server","version":"0.2.1",...}
 ```
 
 The Docker image ships with a `HEALTHCHECK` against this endpoint and the
@@ -270,7 +270,7 @@ larger deployments, optional knobs (all environment-configurable):
 
 ## 🛠️ Available MCP Tools
 
-The CourtListener MCP Server provides these production-ready tools (see [app/README.md](app/README.md) for full details and parameters):
+The CourtListener ++ MCP Server provides these production-ready tools (see [app/README.md](app/README.md) for full details and parameters):
 
 - **Opinion & Case Search:**
   - `search_opinions` — Search legal opinions and court decisions
@@ -425,8 +425,9 @@ Pre-built images are available from:
 |----------|-------|
 | Docker Hub | `vesha/court-listener-mcp:latest` |
 | GitHub Container Registry | `ghcr.io/travis-prall/court-listener-mcp:latest` |
+| Private Registry | `docker.vesha.net/court-listener-mcp:latest` |
 
-Images are published to the GitHub Container Registry automatically by [GitHub Actions](.github/workflows/docker-publish.yml) on every push to `main` and on `v*` version tags. Multi-arch builds (`linux/amd64` and `linux/arm64`) are supported.
+Images are published to the GitHub Container Registry automatically by [GitHub Actions](.github/workflows/docker-publish.yml) on every push to `main` and on `v*` version tags. Multi-arch builds (`linux/amd64` and `linux/arm64`) are supported. Docker Hub and the private `docker.vesha.net` registry are published manually with the same multi-arch image (`docker buildx build --platform linux/amd64,linux/arm64`), and versioned tags follow the `X.Y.Z` + `latest` + git-short-SHA conventions.
 
 ## ⚖️ License
 
@@ -444,4 +445,4 @@ Prefer crypto? See [DONATE.md](DONATE.md) for donation addresses.
 
 ---
 
-**Ready to use!** The CourtListener MCP Server provides production-ready access to legal data, federal statutes, and federal rulemaking documents through 30 comprehensive MCP tools.
+**Ready to use!** The CourtListener ++ MCP Server provides production-ready access to legal data, federal statutes, and federal rulemaking documents through 30 comprehensive MCP tools.
