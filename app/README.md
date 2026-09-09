@@ -79,7 +79,6 @@ async with Client("http://localhost:8000/mcp/") as client:
 | get_title_structure          | date, title_number                                                                                    | Get full title structure                         |
 | get_source_xml               | date, title, part, section                                                                            | Download source XML for regulation               |
 | get_source_json              | date, title, chapter, part                                                                            | Get regulatory content as JSON                   |
-| status, get_api_status, health_check | (none)                                                                                         | System and health checks                         |
 
 ## Usage Examples
 
