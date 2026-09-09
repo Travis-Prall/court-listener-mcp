@@ -396,7 +396,7 @@ def _combined_citation_info(result: dict[str, Any]) -> dict[str, Any]:
     return {"has_both_sources": False, "available_sources": available_sources}
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def get_citations(
     citation: Annotated[
         str,
@@ -427,7 +427,7 @@ async def get_citations(
     return await _lookup_citations_batch(citations, ctx)
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def parse_citation(
     citation: Annotated[str, Field(description="The citation string to parse")],
     ctx: Context | None = None,
@@ -464,7 +464,7 @@ async def parse_citation(
     return {"success": True, "parser_used": parser_used, **result}
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def validate_citation(
     citation: Annotated[str, Field(description="The citation string to validate")],
     ctx: Context | None = None,
@@ -494,7 +494,7 @@ async def validate_citation(
     return {"valid": True, "citation": citation, "parsed": parsed}
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def verify_citation_format(
     citation: Annotated[
         str,
@@ -548,7 +548,7 @@ async def verify_citation_format(
     return result
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def batch_lookup(
     citations: Annotated[
         list[str],
@@ -592,7 +592,7 @@ async def batch_lookup(
     return await _lookup_citations_batch(citations, ctx, request_timeout=BATCH_TIMEOUT)
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def get_citation_details(
     citation_id: Annotated[str, Field(description="The citation ID to retrieve")],
     ctx: Context | None = None,
@@ -620,7 +620,7 @@ async def get_citation_details(
     return await _lookup_citations_batch([citation_id], ctx)
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def lookup_citation(
     citation: Annotated[
         str,
@@ -662,7 +662,7 @@ async def lookup_citation(
     return await _lookup_citations_batch([citation], ctx)
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def batch_lookup_citations(
     citations: Annotated[
         list[str],
@@ -692,7 +692,7 @@ async def batch_lookup_citations(
     return await _lookup_citations_batch(citations, ctx, request_timeout=BATCH_TIMEOUT)
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def parse_citation_with_citeurl(
     citation: Annotated[
         str,
@@ -756,7 +756,7 @@ async def parse_citation_with_citeurl(
     return result
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def extract_citations_from_text(
     text: Annotated[
         str,
@@ -809,7 +809,7 @@ async def extract_citations_from_text(
     }
 
 
-@citation_server.tool()
+@citation_server.tool(tags={"requires-courtlistener-key"})
 async def enhanced_citation_lookup(
     citation: Annotated[
         str,

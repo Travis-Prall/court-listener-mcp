@@ -14,7 +14,11 @@ from loguru import logger
 import pytest
 import respx
 
-from app.server import mcp
+from app.server import (
+    DISABLED_TOOL_GROUPS,
+    disable_tools_with_missing_api_keys,
+    mcp,
+)
 from app.tools.common import API_BASE_URL, SEARCH_URL
 
 # Shared test constants
@@ -94,13 +98,15 @@ async def test_status_tool(client: Client[Any]) -> None:
         assert "memory_mb" in data["system"]
         assert "cpu_percent" in data["system"]
 
-        # Verify server section
+        # Verify server section - all groups enabled because the conftest
+        # autouse fixture re-enables key-gated groups before every test
         assert data["server"]["tools_available"] == [
             "search",
             "get",
             "citation",
             "statutes",
         ]
+        assert data["server"]["tools_disabled"] == []
         assert data["server"]["transport"] == "streamable-http"
         assert (
             data["server"]["api_base"] == "https://www.courtlistener.com/api/rest/v4/"
@@ -442,3 +448,84 @@ async def test_concurrent_requests(client: Client[Any], api_key: str) -> None:
             assert "error" not in data or data.get("error") is None
 
         logger.info("Concurrent requests handled successfully")
+
+
+@pytest.mark.asyncio
+async def test_missing_govinfo_key_disables_statute_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing GOVINFO_API_KEY disables the statutes tool group.
+
+    The group disappears from list_tools, cannot be called, and the
+    status tool reports it under tools_disabled.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        The pytest monkeypatch fixture.
+
+    """
+    monkeypatch.setenv("COURT_LISTENER_API_KEY", "present")
+    monkeypatch.delenv("GOVINFO_API_KEY", raising=False)
+    disabled = disable_tools_with_missing_api_keys()
+    try:
+        assert disabled == ["statutes"]
+        assert DISABLED_TOOL_GROUPS == ["statutes"]
+
+        async with Client(mcp) as client:
+            names = {tool.name for tool in await client.list_tools()}
+            assert not any(name.startswith("statutes") for name in names)
+            # Other groups remain available
+            assert "search_opinions" in names
+
+            # Calling a disabled tool behaves as if it does not exist
+            with pytest.raises(ToolError):
+                await client.call_tool(
+                    "statutes_search_statutes", {"query": "civil rights"}
+                )
+
+            # The status tool reflects the disabled group
+            result = await client.call_tool("status", {})
+            assert result.content
+            data = json.loads(result.content[0].text)  # type: ignore[attr-defined]
+            assert data["server"]["tools_available"] == [
+                "search",
+                "get",
+                "citation",
+            ]
+            assert data["server"]["tools_disabled"] == ["statutes"]
+    finally:
+        mcp.enable(tags={"requires-govinfo-key"})
+        if "statutes" in DISABLED_TOOL_GROUPS:
+            DISABLED_TOOL_GROUPS.remove("statutes")
+
+
+@pytest.mark.asyncio
+async def test_missing_courtlistener_key_disables_courtlistener_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing COURT_LISTENER_API_KEY disables search/get/citation tools.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        The pytest monkeypatch fixture.
+
+    """
+    monkeypatch.setenv("GOVINFO_API_KEY", "present")
+    monkeypatch.delenv("COURT_LISTENER_API_KEY", raising=False)
+    disabled = disable_tools_with_missing_api_keys()
+    try:
+        assert disabled == ["search", "get", "citation"]
+        assert DISABLED_TOOL_GROUPS == ["search", "get", "citation"]
+
+        async with Client(mcp) as client:
+            names = {tool.name for tool in await client.list_tools()}
+            assert not any(name.startswith(("search_", "get_")) for name in names)
+            # The statutes group remains available
+            assert any(name.startswith("statutes") for name in names)
+    finally:
+        mcp.enable(tags={"requires-courtlistener-key"})
+        for group in ("search", "get", "citation"):
+            if group in DISABLED_TOOL_GROUPS:
+                DISABLED_TOOL_GROUPS.remove(group)

@@ -74,7 +74,9 @@ The statute lookup tools (`statutes_*`) use the GovInfo API from the U.S. Govern
    GOVINFO_API_KEY=your-api-data-gov-key-here
    ```
 
-GovInfo requests authenticate with an `X-Api-Key` HTTP header. Without the key, all `statutes_*` tools raise an error asking for `GOVINFO_API_KEY` to be set.
+GovInfo requests authenticate with an `X-Api-Key` HTTP header. If `GOVINFO_API_KEY` is missing at startup, the server logs a warning and **automatically disables every tool that requires it** — the `statutes_*` tools are hidden from clients until the key is set and the server is restarted. The same startup behavior applies to `COURT_LISTENER_API_KEY` and the `search_*`, `get_*`, and `citation_*` tools. As a fallback, calling a key-required tool without its key still raises an error asking for the key to be set.
+
+The `status` tool reports which tool groups are live under `tools_available` and which are disabled (with the missing key) under `tools_disabled`.
 
 ## 🐳 Docker Quick Start (Recommended)
 
