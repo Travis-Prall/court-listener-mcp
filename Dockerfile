@@ -59,8 +59,13 @@ ENV PYTHONUNBUFFERED=1 \
     LOG_FORMAT=json \
     API_BASE_URL=https://www.courtlistener.com/api/rest/v4/
 
-# Expose port (optional - not needed for stdio but doesn't hurt)
+# Expose the MCP HTTP (streamable) port
 EXPOSE 8785
+
+# Liveness probe for orchestrators - hits the unauthenticated /health route
+# documented in the FastMCP HTTP deployment guide
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8785/health || exit 1
 
 # Labels for container metadata
 LABEL org.opencontainers.image.title="CourtListener MCP Server" \
@@ -70,6 +75,6 @@ LABEL org.opencontainers.image.title="CourtListener MCP Server" \
       org.opencontainers.image.url="https://www.travisprall.com/" \
       org.opencontainers.image.vendor="Travis-Prall"
 
-# Default command: run the MCP server with streamable-http transport on :8785.
+# Default command: run the MCP server with HTTP (streamable) transport on :8785.
 # docker-compose.yml overrides this with the same command.
 CMD ["python", "-m", "app"]

@@ -37,7 +37,7 @@ def test_is_docker_returns_bool() -> None:
 async def test_main_uses_configured_transport(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """main() runs streamable-http with the configured host, port, and level."""
+    """main() runs HTTP (streamable) with the configured host, port, and level."""
     captured: dict[str, object] = {}
 
     async def fake_run_async(**kwargs: object) -> None:
@@ -49,7 +49,7 @@ async def test_main_uses_configured_transport(
     monkeypatch.setattr(server_module.mcp, "run_async", fake_run_async)
     await main()
     assert captured == {
-        "transport": "streamable-http",
+        "transport": "http",
         "host": "127.0.0.1",
         "port": 8786,
         "path": "/mcp/",

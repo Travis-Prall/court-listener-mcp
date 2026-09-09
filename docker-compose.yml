@@ -8,10 +8,17 @@ services:
       dockerfile: Dockerfile
     image: court-listener-mcp:latest
     container_name: court-listener-mcp-server
-    # Run the MCP server with streamable-http transport
+    # Run the MCP server with HTTP (streamable) transport
     command: python -m app
     ports:
       - "8785:8785"
+    # Liveness probe against the unauthenticated /health route
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8785/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     env_file:
       - .env
     environment:
@@ -20,7 +27,6 @@ services:
     restart: unless-stopped
     networks:
       - mcp-network
-    # No ports needed for stdio
 
 networks:
   mcp-network:

@@ -229,6 +229,39 @@ async with Client("http://localhost:8785/mcp/") as client:
     print(result)
 ```
 
+### Health Checks
+
+The server exposes an unauthenticated liveness endpoint for load balancers,
+monitoring systems, and container orchestrators:
+
+```bash
+curl http://localhost:8785/health
+# {"status":"healthy","service":"CourtListener MCP Server","version":"0.2.0",...}
+```
+
+The Docker image ships with a `HEALTHCHECK` against this endpoint and the
+provided `docker-compose.yml` mirrors it, so `docker ps` and
+`docker compose ps` report container health automatically.
+
+### HTTP Deployment Notes
+
+Following the [FastMCP HTTP deployment guide](https://gofastmcp.com/deployment/http.md),
+the server uses the **direct HTTP server** approach (`mcp.run_async(transport="http")`),
+which the guide recommends for standalone, single-instance deployments. For
+larger deployments, optional knobs (all environment-configurable):
+
+- **Horizontal scaling**: set `FASTMCP_STATELESS_HTTP=true` when running
+  multiple replicas behind a load balancer (streamable HTTP sessions are
+  per-instance, and sticky sessions are unreliable for MCP clients). Pair
+  with `FASTMCP_DOCKET_URL` so the tasks backend is shared.
+- **Host/origin protection**: set `FASTMCP_HTTP_HOST_ORIGIN_PROTECTION=true`
+  with explicit allow-lists (`FASTMCP_HTTP_ALLOWED_HOSTS`,
+  `FASTMCP_HTTP_ALLOWED_ORIGINS`) when exposing a public hostname.
+- **Long-running tools behind proxies**: for tools that may exceed proxy
+  timeouts, the guide recommends an EventStore for SSE polling; and when
+  fronting with nginx set `proxy_buffering off` plus generous
+  `proxy_read_timeout` (300s+) so streaming responses reach clients.
+
 ## 🛠️ Available MCP Tools
 
 The CourtListener MCP Server provides these production-ready tools (see [app/README.md](app/README.md) for full details and parameters):

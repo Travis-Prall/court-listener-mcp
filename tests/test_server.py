@@ -17,6 +17,7 @@ import respx
 from app.server import (
     DISABLED_TOOL_GROUPS,
     disable_tools_with_missing_api_keys,
+    get_version,
     mcp,
 )
 from app.tools.common import API_BASE_URL, SEARCH_URL
@@ -108,12 +109,36 @@ async def test_status_tool(client: Client[Any]) -> None:
             "regulations",
         ]
         assert data["server"]["tools_disabled"] == []
-        assert data["server"]["transport"] == "streamable-http"
+        assert data["server"]["transport"] == "http"
         assert (
             data["server"]["api_base"] == "https://www.courtlistener.com/api/rest/v4/"
         )
 
         logger.info(f"Status tool test passed: {data}")
+
+
+@pytest.mark.asyncio
+async def test_health_endpoint_over_http() -> None:
+    """Test the /health custom route via the ASGI app.
+
+    The FastMCP HTTP deployment guide recommends an unauthenticated
+    ``GET /health`` custom route for load balancers and container
+    orchestrators. This test exercises it through ``mcp.http_app()``.
+
+    """
+    app = mcp.http_app(path="/mcp/")
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as http_client:
+        response = await http_client.get("/health")
+
+    assert response.status_code == httpx.codes.OK
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["service"] == "CourtListener MCP Server"
+    assert data["version"] == get_version()
+    assert "timestamp" in data
 
 
 @pytest.mark.asyncio
