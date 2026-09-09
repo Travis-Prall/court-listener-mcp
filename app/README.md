@@ -131,11 +131,18 @@ statutes_get_uscode_title(title_number="42", section="540b")
 statutes_get_statute_content(package_id="PLAW-117publ58", content_type="summary")
 ```
 
+### Search Federal Rulemaking Documents
+
+```python
+regulations_search_documents(query="clean air act", filter_agency="EPA")
+```
+
 ## Common Use Cases
 
 - Legal research by topic, court, or judge
 - Citation verification and lookup
 - Statutory lookup and verification (USC, Statutes at Large, public laws)
+- Federal rulemaking research (Regulations.gov documents)
 - Bulk metadata extraction for LLMs
 
 ## See Also
