@@ -15,16 +15,16 @@ classifiers = [
 ]
 
 dependencies = [
-  "fastmcp>=2.8.0",
+  "fastmcp>=4.0.3",
   "httpx>=0.28.1",
   "loguru>=0.7.3",
-  "python-dotenv>=1.0.0",
-  "pydantic>=2.0.0",
-  "pydantic-settings>=2.0.0",
-  "psutil>=7.0.0",
-  "citeurl[full]>=11.5.1",
+  "python-dotenv>=1.2.3",
+  "pydantic>=2.13.5",
+  "pydantic-settings>=2.15.0",
+  "psutil>=7.2.2",
+  "citeurl[full]>=12.0.3",
   # citeurl>=12 imports `markdown` in citeurl/__init__.py but does not declare it
-  "markdown>=3.7",
+  "markdown>=3.10.3",
 ]
 
 [project.urls]
@@ -40,17 +40,17 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
   # Testing
-  "pytest>=8.3.0",
-  "pytest-asyncio>=0.24.0",
-  "pytest-cov>=6.0.0",
-  "respx>=0.22.0",  # HTTP mocking for httpx (keeps tests off the live API)
+  "pytest>=9.1.1",
+  "pytest-asyncio>=1.4.0",
+  "pytest-cov>=7.1.0",
+  "respx>=0.23.1",  # HTTP mocking for httpx (keeps tests off the live API)
   # Code quality
-  "mypy>=1.12.0",
-  "ruff>=0.8.0",
-  "types-psutil>=7.1.3",  # Type stubs for psutil (mypy)
+  "mypy>=2.3.1",
+  "ruff>=0.16.6",
+  "types-psutil>=7.2.2",  # Type stubs for psutil (mypy)
   # Development tools
-  "ipython>=8.28.0",
-  "rich>=13.9.0",
+  "ipython>=9.17.1",
+  "rich>=15.0.0",
 ]
 
 [tool.uv.sources]
