@@ -1,4 +1,4 @@
-"""Tests for the CourtListener MCP server."""
+"""Tests for the CourtListener ++ MCP server."""
 
 # Pytest assertions are the idiomatic test mechanism in this file.
 # ruff: file-ignore[assert, unused-function-argument]
@@ -82,7 +82,7 @@ async def test_status_tool(client: Client[Any]) -> None:
 
         # Verify expected fields
         assert data["status"] == "healthy"
-        assert data["service"] == "CourtListener MCP Server"
+        assert data["service"] == "CourtListener ++ MCP Server"
         assert data["version"] == "0.2.0"
         assert "timestamp" in data
         assert "environment" in data
@@ -136,7 +136,7 @@ async def test_health_endpoint_over_http() -> None:
     assert response.status_code == httpx.codes.OK
     data = response.json()
     assert data["status"] == "healthy"
-    assert data["service"] == "CourtListener MCP Server"
+    assert data["service"] == "CourtListener ++ MCP Server"
     assert data["version"] == get_version()
     assert "timestamp" in data
 

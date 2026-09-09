@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entry point for running the CourtListener MCP Server.
+"""Entry point for running the CourtListener ++ MCP Server.
 
 This allows the server to be run with:
     python -m app

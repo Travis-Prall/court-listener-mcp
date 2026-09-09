@@ -5,4 +5,4 @@ This package provides LLM-friendly access to legal cases, opinions, and court da
 through the official CourtListener API v4.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"

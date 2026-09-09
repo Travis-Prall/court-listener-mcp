@@ -1,7 +1,7 @@
 [project]
 name = "court-listener-mcp-server"
 version = "0.2.0"
-description = "Model Context Protocol server providing LLM-friendly access to legal cases and court data through the CourtListener API v4"
+description = "Model Context Protocol server providing LLM-friendly access to legal cases and court data through the CourtListener API v4, plus statute lookup via GovInfo and federal rulemaking document search via Regulations.gov"
 authors = [{ name = "Travis-Prall", email = "smart@travisprall.com" }]
 readme = "README.md"
 license = { file = "LICENSE.md" }
