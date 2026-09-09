@@ -300,7 +300,6 @@ name = "court-listener-mcp-server"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
-    { name = "anyio" },
     { name = "citeurl", extra = ["full"] },
     { name = "fastmcp" },
     { name = "httpx" },
@@ -308,15 +307,14 @@ dependencies = [
     { name = "markdown" },
     { name = "psutil" },
     { name = "pydantic" },
+    { name = "pydantic-settings" },
     { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx-sse" },
     { name = "ipython" },
     { name = "mypy" },
-    { name = "pydantic" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -328,7 +326,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anyio", specifier = ">=3.0.0" },
     { name = "citeurl", extras = ["full"], specifier = ">=11.5.1" },
     { name = "fastmcp", specifier = ">=2.8.0" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -336,15 +333,14 @@ requires-dist = [
     { name = "markdown", specifier = ">=3.7" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx-sse", specifier = ">=0.4.0" },
     { name = "ipython", specifier = ">=8.28.0" },
     { name = "mypy", specifier = ">=1.12.0" },
-    { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=8.3.0" },
     { name = "pytest-asyncio", specifier = ">=0.24.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
@@ -754,15 +750,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406, upload-time = "2024-12-06T15:37:23.222Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
-]
-
-[[package]]
-name = "httpx-sse"
-version = "0.4.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/4c/751061ffa58615a32c31b2d82e8482be8dd4a89154f003147acee90f2be9/httpx_sse-0.4.3.tar.gz", hash = "sha256:9b1ed0127459a66014aec3c56bebd93da3c1bc8bb6618c8082039a44889a755d", size = 15943, upload-time = "2025-10-10T21:48:22.271Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/fd/6668e5aec43ab844de6fc74927e155a3b37bf40d7c3790e49fc0406b6578/httpx_sse-0.4.3-py3-none-any.whl", hash = "sha256:0ac1c9fe3c0afad2e0ebb25a934a59f4c7823b60792691f779fad2c5568830fc", size = 8960, upload-time = "2025-10-10T21:48:21.158Z" },
 ]
 
 [[package]]
