@@ -205,8 +205,6 @@ The CourtListener MCP Server provides these production-ready tools (see [app/REA
 - **Citation & Regulation Tools:**
   - `lookup_citation`, `batch_lookup_citations`, `verify_citation_format`, `parse_citation_with_citeurl`, `extract_citations_from_text`, `enhanced_citation_lookup`
   - `list_titles`, `list_agencies`, `search_regulations`, `list_all_corrections`, `list_corrections_by_title`, `get_search_suggestions`, `get_search_summary`, `get_title_search_counts`, `get_daily_search_counts`, `get_ancestry`, `get_title_structure`, `get_source_xml`, `get_source_json`
-- **System & Health:**
-  - `status`, `get_api_status`, `health_check`
 
 See [app/README.md](app/README.md) for a full reference of all tools, parameters, and usage examples.
 
