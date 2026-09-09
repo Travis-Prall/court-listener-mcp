@@ -24,6 +24,171 @@ The CourtListener MCP Server provides comprehensive access to **legal case data,
   - Verify exact legal language and precedents
   - Validate legal citations and references
 
+## � Getting a CourtListener API Key
+
+An API key is **required** for authenticated access to the CourtListener API. While some endpoints work without authentication, you will be severely rate-limited (anonymous users get throttled quickly).
+
+### Why You Need an API Key
+
+- **Higher Rate Limits**: Authenticated users get 5,000 queries per hour
+- **Full API Access**: Some endpoints require authentication
+- **Better Performance**: Avoid anonymous throttling
+- **Usage Tracking**: Monitor your API usage in your profile
+
+### How to Get Your API Key
+
+1. **Create an Account**: Go to [CourtListener Sign Up](https://www.courtlistener.com/register/) and create a free account.
+
+2. **Sign In**: Log into your account at [CourtListener Sign In](https://www.courtlistener.com/sign-in/).
+
+3. **Get Your Token**: Navigate to [API Help - REST](https://www.courtlistener.com/help/api/rest/#your-authorization-token) while logged in. Your authorization token will be displayed on that page.
+
+4. **Copy Your Token**: Your token will look something like: `abcd1234567890efghij1234567890abcd123456`
+
+5. **Configure the Server**: Add your token to your `.env` file:
+
+   ```bash
+   COURT_LISTENER_API_KEY=your-token-here
+   ```
+
+### Token Authentication Format
+
+When making API requests, the token is sent in the `Authorization` HTTP header:
+
+```bash
+Authorization: Token your-token-here
+```
+
+> **Important**: Don't forget the word "Token" before your actual token value!
+
+## 🐳 Docker Quick Start (Recommended)
+
+The fastest way to get started is with Docker. Pre-built images are available from multiple registries.
+
+### Pull the Image
+
+```bash
+# From Docker Hub
+docker pull vesha/court-listener-mcp:latest
+
+# From GitHub Container Registry
+docker pull ghcr.io/travis-prall/court-listener-mcp:latest
+```
+
+### Run with Docker
+
+```bash
+# Quick start (minimal configuration)
+docker run -d \
+  --name court-listener-mcp \
+  -p 8785:8785 \
+  -e COURT_LISTENER_API_KEY=your-api-key-here \
+  vesha/court-listener-mcp:latest
+
+# With all configuration options
+docker run -d \
+  --name court-listener-mcp \
+  -p 8785:8785 \
+  -e COURT_LISTENER_API_KEY=your-api-key-here \
+  -e COURTLISTENER_BASE_URL=https://www.courtlistener.com/api/rest/v4/ \
+  -e COURTLISTENER_TIMEOUT=30 \
+  -e COURTLISTENER_LOG_LEVEL=INFO \
+  -e ENVIRONMENT=production \
+  vesha/court-listener-mcp:latest
+```
+
+### Run with Docker Compose
+
+1. **Create a `.env` file** in your project directory:
+
+   ```bash
+   # Required: Your CourtListener API Key
+   COURT_LISTENER_API_KEY=your-api-key-here
+
+   # Optional: Override defaults
+   COURTLISTENER_LOG_LEVEL=INFO
+   ENVIRONMENT=production
+   ```
+
+2. **Create a `docker-compose.yml`** (or use the one in this repo):
+
+   ```yaml
+   services:
+     court-listener-mcp:
+       image: vesha/court-listener-mcp:latest
+       container_name: court-listener-mcp-server
+       ports:
+         - "8785:8785"
+       env_file:
+         - .env
+       environment:
+         - LOG_LEVEL=INFO
+         - API_BASE_URL=https://www.courtlistener.com/api/rest/v4
+       restart: unless-stopped
+   ```
+
+3. **Start the server**:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **View logs**:
+
+   ```bash
+   docker-compose logs -f
+   ```
+
+5. **Stop the server**:
+
+   ```bash
+   docker-compose down
+   ```
+
+### Build Your Own Image
+
+If you prefer to build the image locally:
+
+```bash
+# Clone the repository
+git clone https://github.com/Travis-Prall/court-listener-mcp.git
+cd court-listener-mcp
+
+# Build the image
+docker build -t court-listener-mcp:latest .
+
+# Run your local build
+docker run -d \
+  --name court-listener-mcp \
+  -p 8785:8785 \
+  -e COURT_LISTENER_API_KEY=your-api-key-here \
+  court-listener-mcp:latest
+```
+
+### Connecting to the Docker Container
+
+Once running, the MCP server is available at:
+
+- **URL**: `http://localhost:8785/mcp/`
+- **Protocol**: Streamable HTTP (FastMCP)
+
+Example client connection:
+
+```python
+from fastmcp import Client
+
+async with Client("http://localhost:8785/mcp/") as client:
+    # Check server status
+    result = await client.call_tool("status")
+    print(result)
+
+    # Search for legal opinions
+    result = await client.call_tool(
+        "search_opinions", {"query": "first amendment", "court": "scotus"}
+    )
+    print(result)
+```
+
 ## 🛠️ Available MCP Tools
 
 The CourtListener MCP Server provides these production-ready tools (see [app/README.md](app/README.md) for full details and parameters):
@@ -45,11 +210,13 @@ The CourtListener MCP Server provides these production-ready tools (see [app/REA
 
 See [app/README.md](app/README.md) for a full reference of all tools, parameters, and usage examples.
 
-## 📦 Installation
+## 📦 Local Installation (Alternative)
+
+If you prefer to run without Docker:
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.14+
 - [uv](https://github.com/astral-sh/uv) for dependency management
 - Internet connection for CourtListener API access
 
@@ -57,34 +224,35 @@ See [app/README.md](app/README.md) for a full reference of all tools, parameters
 
 ```bash
 # Clone the repository
- git clone <repository-url>
- cd CourtListener
+git clone https://github.com/Travis-Prall/court-listener-mcp.git
+cd court-listener-mcp
 
 # Install dependencies
- uv sync
+uv sync
 
 # Activate the environment (optional)
- uv shell
+uv shell
 ```
 
 ### Environment Configuration
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (see `example.env` for all options):
 
 ```bash
+# Required
+COURT_LISTENER_API_KEY=your-api-key-here
+
+# Optional (defaults shown)
 COURTLISTENER_BASE_URL=https://www.courtlistener.com/api/rest/v4/
-COURT_LISTENER_TIMEOUT=30
-LOG_LEVEL=INFO
-RATE_LIMIT_REQUESTS=10
-RATE_LIMIT_PERIOD=60
-DEBUG=false
-MCP_PORT=8765
-MCP_DEV_PORT=8766
+COURTLISTENER_TIMEOUT=30
+COURTLISTENER_LOG_LEVEL=INFO
+COURTLISTENER_DEBUG=false
+HOST=0.0.0.0
+MCP_PORT=8785
+ENVIRONMENT=production
 ```
 
 ### Running the Server
-
-The server now runs with streamable-http transport by default:
 
 ```bash
 uv run python -m app.server
@@ -93,35 +261,14 @@ uv run python -m app.server
 This will start the server at:
 
 - **Host**: `0.0.0.0` (accessible from external connections)
-- **Port**: `8000`
-- **Endpoint**: `http://localhost:8000/mcp/`
+- **Port**: `8785`
+- **Endpoint**: `http://localhost:8785/mcp/`
 
 Or use the VS Code task: **Run MCP Server**
-
-#### Connecting to the Server
-
-When using the streamable-http transport, clients can connect to the server using:
-
-```python
-from fastmcp import Client
-
-async with Client("http://localhost:8000/mcp/") as client:
-    result = await client.call_tool("status")
-    print(result)
-```
 
 ## 💡 Usage Examples
 
 See [app/README.md](app/README.md) for detailed tool usage and examples, including search, citation, and regulatory queries.
-
-## 🐳 Docker Setup
-
-```bash
-# Production
- docker-compose up -d
-# Development with hot reload
- docker-compose --profile dev up --build
-```
 
 ## 🧪 Testing
 
@@ -143,17 +290,53 @@ uv run pip-audit
 
 ## 🚨 Troubleshooting
 
-See [app/README.md](app/README.md) and [tests/README.md](tests/README.md) for troubleshooting and advanced usage.
+### Common Issues
+
+**"unauthorized" or "throttled" errors:**
+- Ensure your API key is set correctly in `.env`
+- Verify you're using Token authentication (not just the raw token)
+- Check your [API usage](https://www.courtlistener.com/profile/api/#usage) in your CourtListener profile
+
+**Container won't start:**
+- Check logs: `docker logs court-listener-mcp`
+- Verify `.env` file exists and is readable
+- Ensure port 8785 is not already in use
+
+**Connection refused:**
+- Wait a few seconds for the server to start
+- Verify the container is running: `docker ps`
+- Check the correct port mapping
+
+See [app/README.md](app/README.md) and [tests/README.md](tests/README.md) for additional troubleshooting.
 
 ## 📚 Documentation
 
 - [Source Code Documentation](app/README.md)
 - [Test Documentation](tests/README.md)
-- [Project Context](context.json)
 - [CourtListener API Documentation](https://www.courtlistener.com/api/rest/v4/)
+- [CourtListener API Help](https://www.courtlistener.com/help/api/rest/)
 - [eCFR API Documentation](https://www.ecfr.gov/developers/documentation/api/v1)
 - [FastMCP Framework](https://github.com/jlowin/fastmcp)
 - [Model Context Protocol](https://spec.modelcontextprotocol.io/)
+
+## 🐳 Docker Image Registries
+
+Pre-built images are available from:
+
+| Registry | Image |
+|----------|-------|
+| Docker Hub | `vesha/court-listener-mcp:latest` |
+| GitHub Container Registry | `ghcr.io/travis-prall/court-listener-mcp:latest` |
+
+Images are published to the GitHub Container Registry automatically by [GitHub Actions](.github/workflows/docker-publish.yml) on every push to `main` and on `v*` version tags. Multi-arch builds (`linux/amd64` and `linux/arm64`) are supported.
+
+## 💖 Support
+
+If you find this project useful, please consider supporting its maintainer. It's completely optional, but always appreciated:
+
+<a href="https://www.buymeacoffee.com/travisprall"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=travisprall&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" alt="Buy travisprall a coffee"></a>
+
+Prefer crypto? See [DONATE.md](DONATE.md) for donation addresses.
 
 ---
 

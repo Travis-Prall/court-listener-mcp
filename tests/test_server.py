@@ -1,33 +1,84 @@
 """Tests for the CourtListener MCP server."""
 
+# Pytest assertions are the idiomatic test mechanism in this file.
+# ruff: file-ignore[assert, unused-function-argument]
+
 import asyncio
+import json
 from typing import Any
 
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
+import httpx
 from loguru import logger
 import pytest
+import respx
+
+from app.server import mcp
+from app.tools.common import API_BASE_URL, SEARCH_URL
+
+# Shared test constants
+MAX_PAGE_SIZE = 20
+MIN_DESCRIPTION_LENGTH = 10
+CONCURRENT_REQUEST_COUNT = 3
+SEARCH_RESPONSE = {
+    "count": 1,
+    "results": [
+        {
+            "caseName": "Miranda v. Arizona",
+            "court": "scotus",
+            "dateFiled": "2023-06-15",
+        }
+    ],
+}
+COURT_RESPONSE = {
+    "id": "scotus",
+    "full_name": "Supreme Court of the United States",
+    "jurisdiction": "F",
+}
+PEOPLE_RESPONSE = {
+    "count": 1,
+    "results": [{"id": 1, "name_first": "John", "name_last": "Roberts"}],
+}
+
+
+@pytest.fixture
+def client() -> Client[Any]:
+    """Create a test client connected to the real server.
+
+    Returns
+    -------
+    Client
+        A FastMCP test client connected to the server instance.
+
+    """
+    return Client(mcp)
 
 
 @pytest.mark.asyncio
 async def test_status_tool(client: Client[Any]) -> None:
     """Test the status tool returns expected server information.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
 
     """
     async with client:
         result = await client.call_tool("status", {})
 
-        # Check response structure - use result.data for parsed response
-        assert not result.is_error
-        data = result.data
+        # Check response structure - result.content is a list of ContentBlocks
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
+
+        # Parse JSON response
+        data = json.loads(response)
 
         # Verify expected fields
         assert data["status"] == "healthy"
         assert data["service"] == "CourtListener MCP Server"
-        assert data["version"] == "0.1.0"
+        assert data["version"] == "0.2.0"
         assert "timestamp" in data
         assert "environment" in data
         assert "system" in data
@@ -45,7 +96,7 @@ async def test_status_tool(client: Client[Any]) -> None:
 
         # Verify server section
         assert data["server"]["tools_available"] == ["search", "get", "citation"]
-        assert data["server"]["transport"] in ["stdio", "http", "sse"]
+        assert data["server"]["transport"] == "streamable-http"
         assert (
             data["server"]["api_base"] == "https://www.courtlistener.com/api/rest/v4/"
         )
@@ -57,8 +108,10 @@ async def test_status_tool(client: Client[Any]) -> None:
 async def test_imported_search_tools_available(client: Client[Any]) -> None:
     """Test that search tools were properly imported with prefix.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
 
     """
     async with client:
@@ -86,8 +139,10 @@ async def test_imported_search_tools_available(client: Client[Any]) -> None:
 async def test_imported_get_tools_available(client: Client[Any]) -> None:
     """Test that get tools were properly imported with prefix.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
 
     """
     async with client:
@@ -112,21 +167,32 @@ async def test_imported_get_tools_available(client: Client[Any]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_opinions_tool(client: Client[Any]) -> None:
-    """Test the search opinions tool with real API call.
+async def test_search_opinions_tool(client: Client[Any], api_key: str) -> None:
+    """Test the search opinions tool with a mocked API response.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
+
+    api_key : str
+        Fake API key fixture used by the tool modules.
 
     """
-    async with client:
+    async with client, respx.mock:
+        respx.get(SEARCH_URL).mock(
+            return_value=httpx.Response(200, json=SEARCH_RESPONSE)
+        )
         # Search for Supreme Court opinions
         result = await client.call_tool(
             "search_opinions", {"q": "miranda", "court": "scotus", "limit": 5}
         )
 
-        assert not result.is_error
-        data = result.data
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
+
+        # Parse JSON response
+        data = json.loads(response)
 
         # Verify response structure
         assert "count" in data
@@ -136,8 +202,7 @@ async def test_search_opinions_tool(client: Client[Any]) -> None:
         # Check we got results
         if data["count"] > 0:
             assert len(data["results"]) > 0
-            # API might not respect exact limit, so be flexible
-            assert len(data["results"]) <= 20  # Should not exceed default page size
+            assert len(data["results"]) <= MAX_PAGE_SIZE  # Default page size
 
             # Verify result structure
             first_result = data["results"][0]
@@ -148,19 +213,30 @@ async def test_search_opinions_tool(client: Client[Any]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_court_tool(client: Client[Any]) -> None:
-    """Test the get court tool with a known court ID.
+async def test_get_court_tool(client: Client[Any], api_key: str) -> None:
+    """Test the get court tool with a mocked courts endpoint.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
+
+    api_key : str
+        Fake API key fixture used by the tool modules.
 
     """
-    async with client:
+    async with client, respx.mock:
+        respx.get(f"{API_BASE_URL}/courts/scotus/").mock(
+            return_value=httpx.Response(200, json=COURT_RESPONSE)
+        )
         # Get info for Supreme Court
         result = await client.call_tool("get_court", {"court_id": "scotus"})
 
-        assert not result.is_error
-        data = result.data
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
+
+        # Parse JSON response
+        data = json.loads(response)
 
         # Verify court data
         assert "id" in data
@@ -172,14 +248,22 @@ async def test_get_court_tool(client: Client[Any]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_with_date_filters(client: Client[Any]) -> None:
-    """Test search with date range filters.
+async def test_search_with_date_filters(client: Client[Any], api_key: str) -> None:
+    """Test search with date range filters using a mocked API response.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
+
+    api_key : str
+        Fake API key fixture used by the tool modules.
 
     """
-    async with client:
+    async with client, respx.mock:
+        route = respx.get(SEARCH_URL).mock(
+            return_value=httpx.Response(200, json=SEARCH_RESPONSE)
+        )
         # Search for recent opinions
         result = await client.call_tool(
             "search_opinions",
@@ -191,32 +275,44 @@ async def test_search_with_date_filters(client: Client[Any]) -> None:
             },
         )
 
-        assert not result.is_error
-        data = result.data
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
+
+        data = json.loads(response)
 
         assert "count" in data
         assert "results" in data
 
-        # If we have results, verify they're in the date range
-        if data["results"]:
-            for opinion in data["results"]:
-                if "dateFiled" in opinion:
-                    # Check date is in expected range
-                    assert opinion["dateFiled"] >= "2023-01-01"
-                    assert opinion["dateFiled"] <= "2023-12-31"
+        # Verify the date filters reached the API as query parameters
+        params = route.calls.last.request.url.params
+        assert params["filed_after"] == "2023-01-01"
+        assert params["filed_before"] == "2023-12-31"
+
+        # Verify returned results fall inside the mocked date range
+        for opinion in data["results"]:
+            if "dateFiled" in opinion:
+                # Check date is in expected range
+                assert opinion["dateFiled"] >= "2023-01-01"
+                assert opinion["dateFiled"] <= "2023-12-31"
 
         logger.info(f"Date filtered search returned {len(data['results'])} results")
 
 
 @pytest.mark.asyncio
 async def test_error_handling(client: Client[Any]) -> None:
-    """Test error handling for invalid requests.
+    """Test error handling for invalid requests using a mocked 404.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
 
     """
-    async with client:
+    async with client, respx.mock:
+        # A 404 from the API must surface as a ToolError
+        respx.get(f"{API_BASE_URL}/opinions/invalid-id-99999999/").mock(
+            return_value=httpx.Response(404, json={"detail": "Not found"})
+        )
         # Try to get a non-existent opinion - should raise ToolError
         with pytest.raises(ToolError):
             await client.call_tool("get_opinion", {"opinion_id": "invalid-id-99999999"})
@@ -228,8 +324,10 @@ async def test_error_handling(client: Client[Any]) -> None:
 async def test_tool_descriptions(client: Client[Any]) -> None:
     """Test that all tools have proper descriptions.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
 
     """
     async with client:
@@ -243,12 +341,12 @@ async def test_tool_descriptions(client: Client[Any]) -> None:
             assert tool.description, f"Tool {tool.name} missing description"
 
             # Check description is meaningful (not empty or too short)
-            assert len(tool.description) > 10, (
+            assert len(tool.description) > MIN_DESCRIPTION_LENGTH, (
                 f"Tool {tool.name} has too short description"
             )
 
             # Check input schema exists
-            assert tool.inputSchema is not None, (
+            assert tool.input_schema is not None, (
                 f"Tool {tool.name} missing input schema"
             )
 
@@ -256,50 +354,67 @@ async def test_tool_descriptions(client: Client[Any]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_people_tool(client: Client[Any]) -> None:
-    """Test searching for judges/people in the database.
+async def test_search_people_tool(client: Client[Any], api_key: str) -> None:
+    """Test searching for judges/people with a mocked API response.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
+
+    api_key : str
+        Fake API key fixture used by the tool modules.
 
     """
-    async with client:
+    async with client, respx.mock:
+        respx.get(SEARCH_URL).mock(
+            return_value=httpx.Response(200, json=PEOPLE_RESPONSE)
+        )
         result = await client.call_tool(
             "search_people", {"q": "Roberts", "position_type": "jud", "limit": 5}
         )
 
-        assert not result.is_error
-        data = result.data
+        assert result.content
+        response = result.content[0].text  # type: ignore[attr-defined]
+
+        data = json.loads(response)
 
         assert "count" in data
         assert "results" in data
 
-        if data["results"]:
-            person = data["results"][0]
-            # Check for any name-related field (API might have different field names)
-            name_fields = [
-                "name_first",
-                "name_last",
-                "name",
-                "name_full",
-                "absolute_url",
-            ]
-            assert any(field in person for field in name_fields), (
-                f"No name field found in person: {list(person.keys())}"
-            )
+        person = data["results"][0]
+        # Check for any name-related field (API might have different field names)
+        name_fields = [
+            "name_first",
+            "name_last",
+            "name",
+            "name_full",
+            "absolute_url",
+        ]
+        assert any(field in person for field in name_fields), (
+            f"No name field found in person: {list(person.keys())}"
+        )
 
         logger.info(f"People search found {data['count']} judges named Roberts")
 
 
 @pytest.mark.asyncio
-async def test_concurrent_requests(client: Client[Any]) -> None:
+async def test_concurrent_requests(client: Client[Any], api_key: str) -> None:
     """Test that the server handles concurrent requests properly.
 
-    Args:
-        client: The FastMCP test client fixture.
+    Parameters
+    ----------
+    client : Client
+        The FastMCP test client fixture.
+
+    api_key : str
+        Fake API key fixture used by the tool modules.
 
     """
-    async with client:
+    async with client, respx.mock:
+        respx.get(SEARCH_URL).mock(
+            return_value=httpx.Response(200, json=SEARCH_RESPONSE)
+        )
         # Make multiple concurrent requests
         tasks = [
             client.call_tool("status", {}),
@@ -310,11 +425,14 @@ async def test_concurrent_requests(client: Client[Any]) -> None:
         results = await asyncio.gather(*tasks)
 
         # Verify all requests completed successfully
-        assert len(results) == 3
+        assert len(results) == CONCURRENT_REQUEST_COUNT
 
         for result in results:
-            assert not result.is_error
-            data = result.data
+            assert result.content
+            assert result.content[0].text  # type: ignore[attr-defined]
+
+            # Parse and verify JSON
+            data = json.loads(result.content[0].text)  # type: ignore[attr-defined]
             assert isinstance(data, dict)
             assert "error" not in data or data.get("error") is None
 
