@@ -18,20 +18,13 @@ import pytest
 import respx
 
 from app.server import mcp
-from app.tools.regulations import (
-    AGENCIES_URL,
-    COMMENTS_URL,
-    DOCUMENTS_URL,
-)
+from app.tools.regulations import DOCUMENTS_URL
 
 # Expected values for the mocked Regulations.gov API responses
 DOCUMENT_RESULT_COUNT = 2
-COMMENT_RESULT_COUNT = 1
-AGENCY_RESULT_COUNT = 2
 EXPECTED_DEFAULT_PAGE_SIZE = 25
 
 DOCUMENT_ID = "EPA-2023-0001-0001"
-COMMENT_ID = "EPA-2023-0001-0001-0001"
 
 
 @pytest.fixture
@@ -82,10 +75,6 @@ def _documents_response() -> dict[str, Any]:
     [
         ("regulations_search_documents", {"query": "clean air"}),
         ("regulations_get_document", {"document_id": DOCUMENT_ID}),
-        ("regulations_search_comments", {"document_id": DOCUMENT_ID}),
-        ("regulations_get_comment", {"comment_id": COMMENT_ID}),
-        ("regulations_get_agencies", {}),
-        ("regulations_get_agency", {"agency_id": "EPA"}),
     ],
 )
 @pytest.mark.asyncio
@@ -256,158 +245,6 @@ async def test_get_document_with_attachments(client: Client[Any], api_key: str) 
 
         params = route.calls.last.request.url.params
         assert params["include"] == "attachments"
-
-
-@pytest.mark.asyncio
-async def test_search_comments(client: Client[Any], api_key: str) -> None:
-    """The comment search targets the document and sorts by posted date.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake Regulations.gov API key.
-
-    """
-    async with client, respx.mock:
-        route = respx.get(f"{COMMENTS_URL}").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "data": [
-                        {
-                            "id": COMMENT_ID,
-                            "type": "comments",
-                            "attributes": {
-                                "postedDate": "2023-08-01",
-                                "commenter": "Public Citizen",
-                            },
-                        }
-                    ],
-                    "meta": {"results": {"total": COMMENT_RESULT_COUNT}},
-                },
-            )
-        )
-        result = await client.call_tool(
-            "regulations_search_comments", {"document_id": DOCUMENT_ID}
-        )
-
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["meta"]["results"]["total"] == COMMENT_RESULT_COUNT
-        assert data["data"][0]["id"] == COMMENT_ID
-
-        params = route.calls.last.request.url.params
-        assert params["filter[commentOnId]"] == DOCUMENT_ID
-        assert params["sort"] == "-postedDate"
-        assert params["page[size]"] == str(EXPECTED_DEFAULT_PAGE_SIZE)
-
-
-@pytest.mark.asyncio
-async def test_get_comment(client: Client[Any], api_key: str) -> None:
-    """A single comment is fetched by ID from the comments endpoint.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake Regulations.gov API key.
-
-    """
-    async with client, respx.mock:
-        respx.get(f"{COMMENTS_URL}/{COMMENT_ID}").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "data": {
-                        "id": COMMENT_ID,
-                        "type": "comments",
-                        "attributes": {"commenter": "Public Citizen"},
-                    }
-                },
-            )
-        )
-        result = await client.call_tool(
-            "regulations_get_comment", {"comment_id": COMMENT_ID}
-        )
-
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["data"]["id"] == COMMENT_ID
-        assert data["data"]["attributes"]["commenter"] == "Public Citizen"
-
-
-@pytest.mark.asyncio
-async def test_get_agencies(client: Client[Any], api_key: str) -> None:
-    """The agency listing calls the agencies endpoint without pagination.
-
-    The live Regulations.gov agencies endpoint rejects pagination
-    parameters, so the tool sends none.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake Regulations.gov API key.
-
-    """
-    async with client, respx.mock:
-        route = respx.get(f"{AGENCIES_URL}").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "data": [
-                        {
-                            "id": "EPA",
-                            "type": "agencies",
-                            "attributes": {"name": "Environmental Protection Agency"},
-                        },
-                        {
-                            "id": "DOT",
-                            "type": "agencies",
-                            "attributes": {"name": "Department of Transportation"},
-                        },
-                    ],
-                    "meta": {"results": {"total": AGENCY_RESULT_COUNT}},
-                },
-            )
-        )
-        result = await client.call_tool("regulations_get_agencies", {})
-
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["meta"]["results"]["total"] == AGENCY_RESULT_COUNT
-        assert {item["id"] for item in data["data"]} == {"EPA", "DOT"}
-
-        # The live endpoint rejects pagination parameters
-        assert len(route.calls.last.request.url.params) == 0
-
-
-@pytest.mark.asyncio
-async def test_get_agency(client: Client[Any], api_key: str) -> None:
-    """A single agency is fetched by ID from the agencies endpoint.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake Regulations.gov API key.
-
-    """
-    async with client, respx.mock:
-        respx.get(f"{AGENCIES_URL}/EPA").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "data": {
-                        "id": "EPA",
-                        "type": "agencies",
-                        "attributes": {
-                            "name": "Environmental Protection Agency",
-                            "acronym": "EPA",
-                        },
-                    }
-                },
-            )
-        )
-        result = await client.call_tool("regulations_get_agency", {"agency_id": "EPA"})
-
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["data"]["id"] == "EPA"
-        assert data["data"]["attributes"]["acronym"] == "EPA"
 
 
 @pytest.mark.asyncio

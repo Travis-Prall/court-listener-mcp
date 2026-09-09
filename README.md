@@ -288,17 +288,11 @@ The CourtListener MCP Server provides these production-ready tools (see [app/REA
 - **Statute Tools (GovInfo API — `GOVINFO_API_KEY` required):**
   - `statutes_search_statutes` — Search across USC, Statutes at Large, Public/Private Laws, and Compilations
   - `statutes_get_uscode_title` — Find USC sections, chapters, and subchapters within a title
-  - `statutes_get_public_laws_by_congress` — Look up public and private laws by Congress
-  - `statutes_get_statutes_at_large` — Search Statutes at Large by volume
   - `statutes_get_statute_content` — Retrieve package/granule summaries or XML/PDF/text download links
   - `statutes_list_statute_collections` — List available statute collections (no API call)
 - **Regulations.gov Tools (Federal Rulemaking — `REGULATIONS_API_KEY` required):**
   - `regulations_search_documents` — Search federal rulemaking documents by keyword, agency, type, or posted date
   - `regulations_get_document` — Get full document details, optionally with attachments
-  - `regulations_search_comments` — List public comments filed on a document
-  - `regulations_get_comment` — Get detailed information about a public comment
-  - `regulations_get_agencies` — List the federal agencies on Regulations.gov
-  - `regulations_get_agency` — Get detailed information about a federal agency
 
 See [app/README.md](app/README.md) for a full reference of all tools, parameters, and usage examples.
 

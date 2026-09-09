@@ -48,35 +48,6 @@ def client() -> Client[Any]:
     return Client(mcp)
 
 
-async def test_get_agencies_live(client: Client[Any]) -> None:
-    """The agency listing tool returns real Regulations.gov agencies.
-
-    Args:
-        client: FastMCP test client fixture.
-
-    """
-    async with client:
-        result = await client.call_tool("regulations_get_agencies", {})
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["data"], "Expected at least one agency"
-        assert all("id" in item for item in data["data"])
-
-
-async def test_get_agency_epa_live(client: Client[Any]) -> None:
-    """The EPA agency record is retrievable by ID.
-
-    Args:
-        client: FastMCP test client fixture.
-
-    """
-    async with client:
-        result = await client.call_tool("regulations_get_agency", {"agency_id": "EPA"})
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["data"]["id"] == "EPA"
-
-
 async def test_search_documents_live(client: Client[Any]) -> None:
     """A document search returns real rulemaking documents.
 
@@ -150,42 +121,3 @@ async def test_get_document_with_attachments_live(
         assert detail_result.content
         detail_data = json.loads(detail_result.content[0].text)
         assert detail_data["data"]["id"] == document_id
-
-
-async def test_comment_flow_live(client: Client[Any]) -> None:
-    """Comments on a document are searchable and fetchable by ID.
-
-    Mirrors the agent flow: search comments on a document found via
-    document search, then fetch the first comment's full record. Skips
-    when the chosen document has no public comments.
-
-    Args:
-        client: FastMCP test client fixture.
-
-    """
-    async with client:
-        search_result = await client.call_tool(
-            "regulations_search_documents",
-            {"query": SEARCH_QUERY, "page_size": LIVE_PAGE_SIZE},
-        )
-        assert search_result.content
-        search_data = json.loads(search_result.content[0].text)
-        assert search_data["data"], "Expected search results"
-
-        document_id = search_data["data"][0]["id"]
-        comment_result = await client.call_tool(
-            "regulations_search_comments", {"document_id": document_id}
-        )
-        assert comment_result.content
-        comment_data = json.loads(comment_result.content[0].text)
-
-        if not comment_data.get("data"):
-            pytest.skip(f"Document {document_id} has no public comments")
-
-        comment_id = comment_data["data"][0]["id"]
-        detail_result = await client.call_tool(
-            "regulations_get_comment", {"comment_id": comment_id}
-        )
-        assert detail_result.content
-        detail_data = json.loads(detail_result.content[0].text)
-        assert detail_data["data"]["id"] == comment_id
