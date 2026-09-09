@@ -256,6 +256,12 @@ async def search_statutes(
     Returns:
         dict: Search results with statute packages and metadata.
 
+    Note:
+        The GovInfo search API rejects dedicated section facets and quoted
+        values with HTTP 500, so ``section`` is matched as free text, and
+        date ranges use the supported ``publishdate:range(start,end)``
+        syntax. Date filtering is most meaningful for the PLAW collection.
+
     Raises:
         ValueError: If GOVINFO_API_KEY is not found in environment variables.
         ValueError: If an invalid collection code is provided.
@@ -286,11 +292,13 @@ async def search_statutes(
     if title_number:
         search_query = f"{search_query} AND title:{title_number}"
     if section:
-        search_query = f"{search_query} AND section:{section}"
-    if start_date:
-        search_query = f"{search_query} AND publishdate:[{start_date} TO *]"
-    if end_date:
-        search_query = f"{search_query} AND publishdate:[* TO {end_date}]"
+        search_query = f"{search_query} AND {section}"
+    if start_date or end_date:
+        range_start = start_date or "0001-01-01"
+        range_end = end_date or "9999-12-31"
+        search_query = (
+            f"{search_query} AND publishdate:range({range_start},{range_end})"
+        )
 
     request_body = {
         "query": search_query,
@@ -354,7 +362,9 @@ async def get_uscode_title(
 
     Note:
         Requires the GOVINFO_API_KEY environment variable; the shared key
-        check raises ValueError when the key is missing.
+        check raises ValueError when the key is missing. The GovInfo
+        search API has no dedicated chapter/section facets, so those
+        filters are matched as free text and may return related sections.
 
     """
     await log_info(ctx, f"Searching USC Title {title_number}")
@@ -363,12 +373,14 @@ async def get_uscode_title(
     # Build search query for USC title using field operators and a
     # collection filter
     search_query = f"collection:USCODE AND title:{title_number}"
+    # The GovInfo search API rejects the chapter/section facets with
+    # HTTP 500, so these filters are appended as free-text terms instead.
     if edition:
         search_query += f" AND publishdate:{edition}"
     if chapter:
-        search_query += f" AND chapter:{chapter}"
+        search_query += f" AND {chapter}"
     if section:
-        search_query += f" AND section:{section}"
+        search_query += f" AND {section}"
 
     request_body = {
         "query": search_query,
@@ -431,6 +443,11 @@ async def get_public_laws_by_congress(
     Returns:
         dict: Law packages and metadata.
 
+    Note:
+        The GovInfo search API has no law-number facet, so ``law_number``
+        is matched as free text. Date ranges use the supported
+        ``publishdate:range(start,end)`` syntax.
+
     Raises:
         ValueError: If GOVINFO_API_KEY is not found in environment variables.
         ValueError: If an invalid law_type is provided.
@@ -453,10 +470,10 @@ async def get_public_laws_by_congress(
 
     if law_number:
         search_query += f" AND {law_number}"
-    if start_date:
-        search_query += f" AND publishdate:[{start_date} TO *]"
-    if end_date:
-        search_query += f" AND publishdate:[* TO {end_date}]"
+    if start_date or end_date:
+        range_start = start_date or "0001-01-01"
+        range_end = end_date or "9999-12-31"
+        search_query += f" AND publishdate:range({range_start},{range_end})"
 
     request_body = {
         "query": search_query,
