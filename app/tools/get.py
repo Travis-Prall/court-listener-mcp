@@ -84,7 +84,7 @@ async def _fetch_record(
     return data
 
 
-@get_server.tool()
+@get_server.tool(tags={"requires-courtlistener-key"})
 async def opinion(
     opinion_id: Annotated[str, Field(description="The opinion ID to retrieve")],
     ctx: Context | None = None,
@@ -108,7 +108,7 @@ async def opinion(
     )
 
 
-@get_server.tool()
+@get_server.tool(tags={"requires-courtlistener-key"})
 async def docket(
     docket_id: Annotated[str, Field(description="The docket ID to retrieve")],
     ctx: Context | None = None,
@@ -130,7 +130,7 @@ async def docket(
     return await _fetch_record("dockets", "docket", docket_id, ctx)
 
 
-@get_server.tool()
+@get_server.tool(tags={"requires-courtlistener-key"})
 async def audio(
     audio_id: Annotated[str, Field(description="The audio recording ID to retrieve")],
     ctx: Context | None = None,
@@ -152,7 +152,7 @@ async def audio(
     return await _fetch_record("audio", "audio", audio_id, ctx)
 
 
-@get_server.tool()
+@get_server.tool(tags={"requires-courtlistener-key"})
 async def cluster(
     cluster_id: Annotated[str, Field(description="The opinion cluster ID to retrieve")],
     ctx: Context | None = None,
@@ -174,7 +174,7 @@ async def cluster(
     return await _fetch_record("clusters", "cluster", cluster_id, ctx)
 
 
-@get_server.tool()
+@get_server.tool(tags={"requires-courtlistener-key"})
 async def person(
     person_id: Annotated[str, Field(description="The person (judge) ID to retrieve")],
     ctx: Context | None = None,
@@ -196,7 +196,7 @@ async def person(
     return await _fetch_record("people", "person", person_id, ctx)
 
 
-@get_server.tool()
+@get_server.tool(tags={"requires-courtlistener-key"})
 async def court(
     court_id: Annotated[
         str, Field(description="The court ID to retrieve (e.g., 'scotus', 'ca9')")

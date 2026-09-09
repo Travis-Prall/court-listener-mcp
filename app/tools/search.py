@@ -101,7 +101,7 @@ async def _execute_search(
     return data
 
 
-@search_server.tool()
+@search_server.tool(tags={"requires-courtlistener-key"})
 async def opinions(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for full text of opinions")],
     court: Annotated[
@@ -167,7 +167,7 @@ async def opinions(  # ruff: ignore[too-many-arguments, too-many-positional-argu
     return await _execute_search(params, ctx, "opinions")
 
 
-@search_server.tool()
+@search_server.tool(tags={"requires-courtlistener-key"})
 async def dockets(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for docket text")],
     court: Annotated[
@@ -241,7 +241,7 @@ async def dockets(  # ruff: ignore[too-many-arguments, too-many-positional-argum
     return await _execute_search(params, ctx, "dockets")
 
 
-@search_server.tool()
+@search_server.tool(tags={"requires-courtlistener-key"})
 async def dockets_with_documents(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[
         str,
@@ -321,7 +321,7 @@ async def dockets_with_documents(  # ruff: ignore[too-many-arguments, too-many-p
     return await _execute_search(params, ctx, "dockets with documents")
 
 
-@search_server.tool()
+@search_server.tool(tags={"requires-courtlistener-key"})
 async def recap_documents(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for document content")],
     court: Annotated[
@@ -388,7 +388,7 @@ async def recap_documents(  # ruff: ignore[too-many-arguments, too-many-position
     return await _execute_search(params, ctx, "RECAP documents")
 
 
-@search_server.tool()
+@search_server.tool(tags={"requires-courtlistener-key"})
 async def audio(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for oral argument audio")],
     court: Annotated[
@@ -455,7 +455,7 @@ async def audio(  # ruff: ignore[too-many-arguments, too-many-positional-argumen
     return await _execute_search(params, ctx, "audio recordings")
 
 
-@search_server.tool()
+@search_server.tool(tags={"requires-courtlistener-key"})
 async def people(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[
         str,

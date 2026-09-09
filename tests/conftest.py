@@ -8,6 +8,8 @@ environment.
 
 import pytest
 
+from app.server import API_KEY_TOOL_GROUPS, DISABLED_TOOL_GROUPS, mcp
+
 # Every tool module imports API_KEY at import time, so each module-level
 # binding must be patched for key-required branches to be deterministic.
 KEYED_MODULES: tuple[str, ...] = (
@@ -47,3 +49,18 @@ def no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for module_name in KEYED_MODULES:
         monkeypatch.setattr(f"{module_name}.API_KEY", None)
+
+
+@pytest.fixture(autouse=True)
+def ensure_keyed_tool_groups_enabled() -> None:
+    """Keep API-key-gated tool groups enabled during each test.
+
+    The server disables tool groups at import time when the host
+    environment lacks API keys. Tests patch keys per test, so the
+    groups are re-enabled and the disabled-group registry cleared
+    before every test to keep the suite deterministic on machines
+    without configured keys.
+    """
+    DISABLED_TOOL_GROUPS.clear()
+    for _, tag, _ in API_KEY_TOOL_GROUPS:
+        mcp.enable(tags={tag})

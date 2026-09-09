@@ -48,6 +48,8 @@ async with Client("http://localhost:8000/mcp/") as client:
 
 ## MCP Tools and Parameters
 
+Every key-required tool is tagged (`requires-courtlistener-key` or `requires-govinfo-key`). At startup the server checks `COURT_LISTENER_API_KEY` and `GOVINFO_API_KEY`: any group whose key is missing is disabled automatically, logged as a warning, and hidden from clients (the `status` tool reports this under `tools_disabled`). Set the key and restart to re-enable the group.
+
 | Tool Name                    | Parameters (all optional unless noted)                                                                 | Description                                      |
 |------------------------------|------------------------------------------------------------------------------------------------------|--------------------------------------------------|
 | search_opinions              | q (required), court, case_name, judge, filed_after, filed_before, cited_gt, cited_lt, order_by, limit | Search legal opinions                            |

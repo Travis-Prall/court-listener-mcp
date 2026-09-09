@@ -3,6 +3,7 @@
 
 import asyncio
 from datetime import UTC, datetime
+import os
 from pathlib import Path
 import sys
 import tomllib
@@ -73,6 +74,27 @@ mcp: FastMCP[Any] = FastMCP(
     ),
 )
 
+# All tool groups exposed by this server, in a stable reporting order.
+ALL_TOOL_GROUPS: tuple[str, ...] = ("search", "get", "citation", "statutes")
+
+# API key env vars mapped to the tool groups they gate. Each entry is
+# (environment variable, tool tag, tuple of tool-group names). Tools are
+# tagged at creation (e.g. ``@govinfo_server.tool(tags={"requires-..."}))``;
+# add future key-gated groups (e.g. Regulations.gov) here and tag their
+# tools to include them in the startup check automatically.
+API_KEY_TOOL_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    (
+        "COURT_LISTENER_API_KEY",
+        "requires-courtlistener-key",
+        ("search", "get", "citation"),
+    ),
+    ("GOVINFO_API_KEY", "requires-govinfo-key", ("statutes",)),
+)
+
+# Names of tool groups disabled at startup due to missing API keys.
+# Reported by the status tool and used by tests.
+DISABLED_TOOL_GROUPS: list[str] = []
+
 
 @mcp.tool()
 def status() -> dict[str, Any]:
@@ -114,13 +136,46 @@ def status() -> dict[str, Any]:
             "cpu_percent": round(process.cpu_percent(interval=0.1), 1),
         },
         "server": {
-            "tools_available": ["search", "get", "citation", "statutes"],
+            "tools_available": [
+                group for group in ALL_TOOL_GROUPS if group not in DISABLED_TOOL_GROUPS
+            ],
+            "tools_disabled": list(DISABLED_TOOL_GROUPS),
             "transport": "streamable-http",
             "api_base": "https://www.courtlistener.com/api/rest/v4/",
             "host": config.host,
             "port": config.mcp_port,
         },
     }
+
+
+def disable_tools_with_missing_api_keys() -> list[str]:
+    """Disable tool groups whose required API key is not configured.
+
+    Iterates :data:`API_KEY_TOOL_GROUPS`, disables every tool tagged with
+    the group's ``requires-*-key`` tag when the key is absent from the
+    environment, and logs a warning for each disabled group. Disabled
+    tools are hidden from clients (they disappear from ``list_tools``)
+    and cannot be called. Set the missing key and restart the server to
+    re-enable the group.
+
+    Returns:
+        list[str]: Names of the tool groups disabled by this call.
+
+    """
+    disabled: list[str] = []
+    for env_var, tag, groups in API_KEY_TOOL_GROUPS:
+        if os.getenv(env_var):
+            continue
+        mcp.disable(tags={tag})
+        for group in groups:
+            if group not in DISABLED_TOOL_GROUPS:
+                DISABLED_TOOL_GROUPS.append(group)
+        disabled.extend(groups)
+        logger.warning(
+            f"{env_var} not set - disabled {', '.join(groups)} tools "
+            f"(tag '{tag}'). Set {env_var} and restart to enable them."
+        )
+    return disabled
 
 
 def setup() -> None:
@@ -142,6 +197,10 @@ def setup() -> None:
     # Mount GovInfo statute tools under the "statutes" namespace
     mcp.mount(govinfo_server, namespace="statutes")
     logger.info("Mounted GovInfo statutes server tools")
+
+    # Hide tool groups whose API keys are missing so clients never see
+    # tools that would fail on every call.
+    disable_tools_with_missing_api_keys()
 
     logger.info("Server setup complete")
 

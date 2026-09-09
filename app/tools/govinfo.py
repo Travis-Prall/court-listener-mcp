@@ -196,7 +196,7 @@ def _get_collection_description(collection_code: str) -> str:
     return descriptions.get(collection_code, "No description available.")
 
 
-@govinfo_server.tool()
+@govinfo_server.tool(tags={"requires-govinfo-key"})
 async def search_statutes(
     query: Annotated[str, Field(description="Search query text for US statutes")],
     collection: Annotated[
@@ -325,7 +325,7 @@ async def search_statutes(
     return data
 
 
-@govinfo_server.tool()
+@govinfo_server.tool(tags={"requires-govinfo-key"})
 async def get_uscode_title(
     title_number: Annotated[
         str, Field(description="USC title number (e.g., '42' for Title 42)")
@@ -396,7 +396,7 @@ async def get_uscode_title(
     return data
 
 
-@govinfo_server.tool()
+@govinfo_server.tool(tags={"requires-govinfo-key"})
 async def get_public_laws_by_congress(
     congress: Annotated[
         int,
@@ -487,7 +487,7 @@ async def get_public_laws_by_congress(
     return data
 
 
-@govinfo_server.tool()
+@govinfo_server.tool(tags={"requires-govinfo-key"})
 async def get_statutes_at_large(
     volume: Annotated[str, Field(description="Statutes at Large volume number")],
     page: Annotated[str, Field(description="Filter by specific page number")] = "",
@@ -545,7 +545,7 @@ async def get_statutes_at_large(
     return data
 
 
-@govinfo_server.tool()
+@govinfo_server.tool(tags={"requires-govinfo-key"})
 async def get_statute_content(
     package_id: Annotated[
         str, Field(description="Package ID (e.g., 'PLAW-117publ58')")
@@ -615,7 +615,7 @@ async def get_statute_content(
     return data
 
 
-@govinfo_server.tool()
+@govinfo_server.tool(tags={"requires-govinfo-key"})
 async def list_statute_collections(
     ctx: Context | None = None,
 ) -> dict[str, Any]:
