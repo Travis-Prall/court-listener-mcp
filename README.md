@@ -1,10 +1,10 @@
 # CourtListener MCP Server
 
-A Model Context Protocol (MCP) server that provides LLM-friendly access to the CourtListener legal database through the official CourtListener API v4, plus United States statute lookup through the official GovInfo API. This server enables searching and retrieving legal opinions, court cases, judges, legal documents, and enacted federal statutes for precise legal research and citation verification.
+A Model Context Protocol (MCP) server that provides LLM-friendly access to the CourtListener legal database through the official CourtListener API v4, plus United States statute lookup through the official GovInfo API and federal rulemaking document search through the official Regulations.gov API. This server enables searching and retrieving legal opinions, court cases, judges, legal documents, enacted federal statutes, and federal rulemaking documents for precise legal research and citation verification.
 
 ## 🎯 Purpose
 
-The CourtListener MCP Server provides comprehensive access to **legal case data, court opinions, and federal statutes** through the extensive CourtListener and GovInfo databases. CourtListener contains millions of legal opinions from federal and state courts, while GovInfo provides the United States Code, Statutes at Large, and Public and Private Laws.
+The CourtListener MCP Server provides comprehensive access to **legal case data, court opinions, federal statutes, and federal rulemaking documents** through the extensive CourtListener, GovInfo, and Regulations.gov databases. CourtListener contains millions of legal opinions from federal and state courts, GovInfo provides the United States Code, Statutes at Large, and Public and Private Laws, and Regulations.gov indexes federal rulemaking dockets, proposed rules, and final rules.
 
 ## 📋 Key Advantages
 
@@ -17,9 +17,12 @@ The CourtListener MCP Server provides comprehensive access to **legal case data,
   - Structured legal document organization
   - Rich metadata including judges, courts, and dates
 - **Statutory Research:**
-  - Search and retrieve sections of the United States Code
-  - Look up Public and Private Laws by Congress
-  - Access Statutes at Large volumes and content downloads
+  - Search across USC, Statutes at Large, Public/Private Laws, and Compilations
+  - Find USC sections, chapters, and subchapters within a title
+  - Retrieve statute package summaries or XML/PDF/text download links
+- **Federal Rulemaking Research:**
+  - Search federal rulemaking documents by keyword, agency, type, or posted date
+  - Retrieve full document details, optionally with attachments
 - **Legal Research:**
   - Search by judge, court, case name, or content
   - Verify exact legal language and precedents
@@ -144,6 +147,9 @@ docker run -d \
 
    # Required for statute lookup: Your GovInfo (api.data.gov) API Key
    GOVINFO_API_KEY=your-govinfo-api-key-here
+
+   # Optional: Regulations.gov federal rulemaking tools (auto-disabled if missing)
+   REGULATIONS_API_KEY=your-api-data-gov-key-here
 
    # Optional: Override defaults
    COURTLISTENER_LOG_LEVEL=INFO
@@ -331,6 +337,9 @@ COURT_LISTENER_API_KEY=your-api-key-here
 # Required for statute lookup tools
 GOVINFO_API_KEY=your-api-data-gov-key-here
 
+# Optional: Regulations.gov federal rulemaking tools (auto-disabled if missing)
+REGULATIONS_API_KEY=your-api-data-gov-key-here
+
 # Optional (defaults shown)
 COURTLISTENER_BASE_URL=https://www.courtlistener.com/api/rest/v4/
 COURTLISTENER_TIMEOUT=30
@@ -357,7 +366,7 @@ Or use the VS Code task: **Run MCP Server**
 
 ## 💡 Usage Examples
 
-See [app/README.md](app/README.md) for detailed tool usage and examples, including search, citation, and statute queries.
+See [app/README.md](app/README.md) for detailed tool usage and examples, including search, citation, statute, and regulations queries.
 
 ## 🧪 Testing
 
@@ -425,11 +434,6 @@ This project is licensed under the **PolyForm Noncommercial License**. You are f
 
 Integration into a commercial product, hosted service, or paid application is strictly prohibited without explicit permission.
 
-## ☕ Support the Project
-
-If this tool saves you time navigating court dockets or the eCFR, consider supporting its continued development!
-[![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](YOUR_LINK_HERE)
-
 ## 💖 Support
 
 If you find this project useful, please consider supporting its maintainer. It's completely optional, but always appreciated:
@@ -440,4 +444,4 @@ Prefer crypto? See [DONATE.md](DONATE.md) for donation addresses.
 
 ---
 
-**Ready to use!** The CourtListener MCP Server provides production-ready access to federal regulations and legal data through 20+ comprehensive MCP tools.
+**Ready to use!** The CourtListener MCP Server provides production-ready access to legal data, federal statutes, and federal rulemaking documents through 30 comprehensive MCP tools.
