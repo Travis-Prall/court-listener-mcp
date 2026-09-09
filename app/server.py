@@ -55,11 +55,16 @@ def is_docker() -> bool:
 # Create main server instance
 mcp: FastMCP[Any] = FastMCP(
     name="CourtListener MCP Server",
-    instructions="Model Context Protocol server providing LLMs with access to the CourtListener legal database. "
-    "This server enables searching for legal opinions, cases, audio recordings, dockets, and people in the legal system. "
-    "It also provides citation lookup, parsing, and validation tools using both the CourtListener API and citeurl library. "
-    "Available tools include: search operations for opinions/cases/audio/dockets/people, get operations for specific records by ID, "
-    "and comprehensive citation tools for parsing, validating, and looking up legal citations.",
+    instructions=(
+        "Model Context Protocol server providing LLMs with access to the "
+        "CourtListener legal database. This server enables searching for legal "
+        "opinions, cases, audio recordings, dockets, and people in the legal "
+        "system. It also provides citation lookup, parsing, and validation "
+        "tools using both the CourtListener API and citeurl library. Available "
+        "tools include: search operations for opinions/cases/audio/dockets/"
+        "people, get operations for specific records by ID, and comprehensive "
+        "citation tools for parsing, validating, and looking up legal citations."
+    ),
 )
 
 
@@ -112,34 +117,35 @@ def status() -> dict[str, Any]:
     }
 
 
-async def setup() -> None:
-    """Set up the server by importing subservers."""
+def setup() -> None:
+    """Set up the server by mounting subservers."""
     logger.info("Setting up CourtListener MCP server")
 
-    # Import search tools with prefix
-    await mcp.import_server(search_server, prefix="search")
-    logger.info("Imported search server tools")
+    # Mount search tools under the "search" namespace
+    mcp.mount(search_server, namespace="search")
+    logger.info("Mounted search server tools")
 
-    # Import get tools with prefix
-    await mcp.import_server(get_server, prefix="get")
-    logger.info("Imported get server tools")
+    # Mount get tools under the "get" namespace
+    mcp.mount(get_server, namespace="get")
+    logger.info("Mounted get server tools")
 
-    # Import citation tools with prefix
-    await mcp.import_server(citation_server, prefix="citation")
-    logger.info("Imported citation server tools")
+    # Mount citation tools under the "citation" namespace
+    mcp.mount(citation_server, namespace="citation")
+    logger.info("Mounted citation server tools")
 
     logger.info("Server setup complete")
 
 
 # Run setup when module is imported
-asyncio.run(setup())
+setup()
 
 
 async def main() -> None:
     """Run the CourtListener MCP server with streamable-http transport."""
     logger.info("Starting CourtListener MCP server with streamable-http transport")
     logger.info(
-        f"Server configuration: host={config.host}, port={config.mcp_port}, log_level={config.courtlistener_log_level}"
+        f"Server configuration: host={config.host}, port={config.mcp_port}, "
+        f"log_level={config.courtlistener_log_level}"
     )
 
     try:

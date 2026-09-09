@@ -1,5 +1,8 @@
 """Test runner for CourtListener MCP server tests."""
 
+# Tests are executed in a controlled subprocess with a fixed argv list.
+# ruff: file-ignore[suspicious-subprocess-import, subprocess-without-shell-equals-true]
+
 from pathlib import Path
 import subprocess
 import sys
@@ -31,7 +34,7 @@ def run_tests() -> int:
 
     logger.info(f"Running tests with command: {' '.join(cmd)}")
 
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, shell=False)
 
     if result.returncode == 0:
         logger.success("All tests passed!")

@@ -1,5 +1,5 @@
-# Use Python 3.12 slim image for smaller size
-FROM python:3.12-slim AS builder
+# Use Python 3.14 slim image for smaller size
+FROM python:3.14-slim AS builder
 
 # Set working directory
 WORKDIR /app
@@ -20,7 +20,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Multi-stage build for smaller final image
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Set working directory
 WORKDIR /app
@@ -64,10 +64,12 @@ EXPOSE 8785
 
 # Labels for container metadata
 LABEL org.opencontainers.image.title="CourtListener MCP Server" \
-      org.opencontainers.image.description="MCP server for Electronic Code of Federal Regulations" \
-      org.opencontainers.image.version="1.0.0" \
-      org.opencontainers.image.source="https://github.com/yourusername/court-listener-mcp"
+      org.opencontainers.image.description="Model Context Protocol server providing LLM-friendly access to legal cases and court data through the CourtListener API v4" \
+      org.opencontainers.image.version="0.2.0" \
+      org.opencontainers.image.source="https://github.com/Travis-Prall/court-listener-mcp" \
+      org.opencontainers.image.url="https://www.travisprall.com/" \
+      org.opencontainers.image.vendor="Travis-Prall"
 
-# No HEALTHCHECK needed for stdio transport
-
-# No CMD needed - docker-compose.yml handles the command
+# Default command: run the MCP server with streamable-http transport on :8785.
+# docker-compose.yml overrides this with the same command.
+CMD ["python", "-m", "app"]
