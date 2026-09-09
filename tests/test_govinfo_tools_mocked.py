@@ -23,8 +23,6 @@ from app.tools.govinfo import GOVINFO_BASE_URL, SEARCH_URL
 EXPECTED_TOTAL_COLLECTIONS = 4
 EXPECTED_DEFAULT_PAGE_SIZE = 50
 USC_TITLE_RESULT_COUNT = 3
-PUBLIC_LAWS_RESULT_COUNT = 2
-STATUTES_AT_LARGE_RESULT_COUNT = 5
 
 
 @pytest.fixture
@@ -65,8 +63,6 @@ async def test_list_statute_collections(client: Client[Any]) -> None:
     [
         ("statutes_search_statutes", {"query": "test"}),
         ("statutes_get_uscode_title", {"title_number": "42"}),
-        ("statutes_get_public_laws_by_congress", {"congress": 117}),
-        ("statutes_get_statutes_at_large", {"volume": "135"}),
         ("statutes_get_statute_content", {"package_id": "PLAW-1"}),
     ],
 )
@@ -220,89 +216,6 @@ async def test_get_uscode_title(client: Client[Any], api_key: str) -> None:
         body = json.loads(route.calls.last.request.content)
         assert body["query"] == "collection:USCODE AND title:42 AND 7 AND 540b"
         assert body["sorts"] == [{"field": "title", "sortOrder": "ASC"}]
-
-
-@pytest.mark.asyncio
-async def test_get_public_laws_by_congress(client: Client[Any], api_key: str) -> None:
-    """The public laws tool scopes the query to the PLAW collection.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake GovInfo API key.
-
-    """
-    async with client, respx.mock:
-        route = respx.post(f"{SEARCH_URL}").mock(
-            return_value=httpx.Response(
-                200, json={"count": 2, "results": [{"packageId": "PLAW-118publ45"}]}
-            )
-        )
-        result = await client.call_tool(
-            "statutes_get_public_laws_by_congress",
-            {"congress": 118, "law_type": "public", "law_number": "118publ58"},
-        )
-
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["count"] == PUBLIC_LAWS_RESULT_COUNT
-
-        body = json.loads(route.calls.last.request.content)
-        assert body["query"] == (
-            "collection:PLAW AND congress:118 "
-            "AND (docClass:public OR title:public) AND 118publ58"
-        )
-        assert body["sorts"] == [{"field": "publishdate", "sortOrder": "DESC"}]
-
-
-@pytest.mark.asyncio
-async def test_get_public_laws_invalid_law_type(
-    client: Client[Any], api_key: str
-) -> None:
-    """An invalid law type is rejected before any API call.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake GovInfo API key.
-
-    """
-    async with client, respx.mock:
-        route = respx.post(f"{SEARCH_URL}").mock(
-            return_value=httpx.Response(200, json={})
-        )
-        with pytest.raises(ToolError):
-            await client.call_tool(
-                "statutes_get_public_laws_by_congress",
-                {"congress": 118, "law_type": "administrative"},
-            )
-        assert not route.called
-
-
-@pytest.mark.asyncio
-async def test_get_statutes_at_large(client: Client[Any], api_key: str) -> None:
-    """The Statutes at Large tool scopes the query to the STATUTE collection.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake GovInfo API key.
-
-    """
-    async with client, respx.mock:
-        route = respx.post(f"{SEARCH_URL}").mock(
-            return_value=httpx.Response(
-                200, json={"count": 5, "results": [{"packageId": "STATUTE-117"}]}
-            )
-        )
-        result = await client.call_tool(
-            "statutes_get_statutes_at_large",
-            {"volume": "135", "congress": 117},
-        )
-
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["count"] == STATUTES_AT_LARGE_RESULT_COUNT
-
-        body = json.loads(route.calls.last.request.content)
-        assert body["query"] == "collection:STATUTE AND 135 AND congress:117"
 
 
 @pytest.mark.asyncio
@@ -555,64 +468,6 @@ async def test_get_uscode_title_edition_filter(
         assert (
             body["query"] == "collection:USCODE AND title:46 AND publishdate:2023-08-11"
         )
-
-
-@pytest.mark.asyncio
-async def test_get_public_laws_private_law_with_dates(
-    client: Client[Any], api_key: str
-) -> None:
-    """Private law type, law number, and date filters compose the query.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake GovInfo API key.
-
-    """
-    async with client, respx.mock:
-        route = respx.post(f"{SEARCH_URL}").mock(
-            return_value=httpx.Response(200, json={"count": 0, "results": []})
-        )
-        await client.call_tool(
-            "statutes_get_public_laws_by_congress",
-            {
-                "congress": 118,
-                "law_type": "private",
-                "law_number": "118priv14",
-                "start_date": "2023-01-01",
-                "end_date": "2024-06-30",
-            },
-        )
-
-        body = json.loads(route.calls.last.request.content)
-        assert body["query"] == (
-            "collection:PLAW AND congress:118"
-            " AND (docClass:private OR title:private) AND 118priv14"
-            " AND publishdate:range(2023-01-01,2024-06-30)"
-        )
-
-
-@pytest.mark.asyncio
-async def test_get_statutes_at_large_page_filter(
-    client: Client[Any], api_key: str
-) -> None:
-    """A page filter is appended to the volume query.
-
-    Args:
-        client: FastMCP test client fixture.
-        api_key: Fixture installing a fake GovInfo API key.
-
-    """
-    async with client, respx.mock:
-        route = respx.post(f"{SEARCH_URL}").mock(
-            return_value=httpx.Response(200, json={"count": 0, "results": []})
-        )
-        await client.call_tool(
-            "statutes_get_statutes_at_large",
-            {"volume": "135", "page": "281", "congress": 117},
-        )
-
-        body = json.loads(route.calls.last.request.content)
-        assert body["query"] == "collection:STATUTE AND 135 AND 281 AND congress:117"
 
 
 @pytest.mark.asyncio

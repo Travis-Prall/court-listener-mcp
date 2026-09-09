@@ -1,10 +1,9 @@
 """Regulations.gov tools for the CourtListener MCP server.
 
-Provides search and retrieval of federal regulations, rulemaking
-documents, and public comments backed by the official Regulations.gov
-API (api.regulations.gov), covering the documents, comments, and
-agencies endpoints of the v4 REST API. All tools require the
-``REGULATIONS_API_KEY`` environment variable (a free api.data.gov key).
+Provides search and retrieval of federal rulemaking documents backed by
+the documents endpoint of the official Regulations.gov v4 REST API
+(api.regulations.gov). All tools require the ``REGULATIONS_API_KEY``
+environment variable (a free api.data.gov key).
 """
 
 # Regulations tool definitions legitimately expose more than the
@@ -26,8 +25,6 @@ from app.tools.common import DEFAULT_TIMEOUT, log_error, log_info
 API_KEY: str | None = os.getenv("REGULATIONS_API_KEY")
 REGULATIONS_BASE_URL = "https://api.regulations.gov"
 DOCUMENTS_URL = f"{REGULATIONS_BASE_URL}/v4/documents"
-COMMENTS_URL = f"{REGULATIONS_BASE_URL}/v4/comments"
-AGENCIES_URL = f"{REGULATIONS_BASE_URL}/v4/agencies"
 
 # Create the Regulations.gov server
 regulations_server: FastMCP[Any] = FastMCP(
@@ -35,12 +32,10 @@ regulations_server: FastMCP[Any] = FastMCP(
     instructions=(
         "Federal rulemaking server backed by the official Regulations.gov "
         "API. Provides search and retrieval of federal regulation "
-        "documents (rules, proposed rules, notices), the public comments "
-        "filed on those documents, and federal agency information. Use "
-        "these tools to find dockets and documents by keyword, agency, "
-        "document type, or posted date, retrieve document details with "
-        "attachments, and read public comment records. All tools require "
-        "the REGULATIONS_API_KEY environment variable."
+        "documents (rules, proposed rules, notices). Use these tools to "
+        "find dockets and documents by keyword, agency, document type, or "
+        "posted date, and retrieve document details with attachments. All "
+        "tools require the REGULATIONS_API_KEY environment variable."
     ),
 )
 
@@ -265,166 +260,4 @@ async def get_document(
         f"{DOCUMENTS_URL}/{document_id}", params, ctx, "Get document"
     )
     await log_info(ctx, f"Retrieved document: {document_id}")
-    return data
-
-
-@regulations_server.tool(tags={"requires-regulations-key"})
-async def search_comments(
-    document_id: Annotated[
-        str,
-        Field(
-            description="Document ID to search public comments for",
-            min_length=1,
-        ),
-    ],
-    page_size: Annotated[
-        int,
-        Field(
-            description="Results per page (the API requires a value of 5-250)",
-            ge=5,
-            le=250,
-        ),
-    ] = 25,
-    page: Annotated[
-        int,
-        Field(description="Page number for pagination", ge=1),
-    ] = 1,
-    ctx: Context | None = None,
-) -> dict[str, Any]:
-    """Search for public comments filed on a regulation document.
-
-    Retrieves the public comments associated with a document, sorted by
-    most recently posted first.
-
-    Args:
-        document_id: Document ID to search comments for.
-        page_size: Number of results per page (the API requires 5-250).
-        page: Page number for pagination.
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: Comment search results with comment metadata and
-        pagination info.
-
-    Note:
-        Requires the REGULATIONS_API_KEY environment variable; the shared
-        key check raises ValueError when the key is missing.
-
-    """
-    await log_info(ctx, f"Searching comments for document: {document_id}")
-    _require_api_key()
-
-    params: dict[str, Any] = {
-        "filter[commentOnId]": document_id,
-        "page[size]": page_size,
-        "page[number]": page,
-        "sort": "-postedDate",
-    }
-
-    data = await _regulations_get(COMMENTS_URL, params, ctx, "Comment search")
-    await log_info(ctx, f"Comment search complete for document: {document_id}")
-    return data
-
-
-@regulations_server.tool(tags={"requires-regulations-key"})
-async def get_comment(
-    comment_id: Annotated[
-        str,
-        Field(
-            description="Regulations.gov comment ID",
-            min_length=1,
-        ),
-    ],
-    ctx: Context | None = None,
-) -> dict[str, Any]:
-    """Get detailed information about a specific public comment.
-
-    Retrieves the full Regulations.gov record for a single public
-    comment, including its attributes and document relationships.
-
-    Args:
-        comment_id: Regulations.gov comment ID.
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: Comment details from the Regulations.gov API.
-
-    Note:
-        Requires the REGULATIONS_API_KEY environment variable; the shared
-        key check raises ValueError when the key is missing.
-
-    """
-    await log_info(ctx, f"Getting Regulations.gov comment: {comment_id}")
-    _require_api_key()
-
-    data = await _regulations_get(
-        f"{COMMENTS_URL}/{comment_id}", {}, ctx, "Get comment"
-    )
-    await log_info(ctx, f"Retrieved comment: {comment_id}")
-    return data
-
-
-@regulations_server.tool(tags={"requires-regulations-key"})
-async def get_agencies(
-    ctx: Context | None = None,
-) -> dict[str, Any]:
-    """Get the list of federal agencies on Regulations.gov.
-
-    Retrieves reference data for agencies participating in the
-    federal rulemaking process, including their names, acronyms, and
-    descriptions. The live agencies endpoint does not support
-    pagination parameters, so the full agency list is returned.
-
-    Args:
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: Agency list with agency metadata.
-
-    Note:
-        Requires the REGULATIONS_API_KEY environment variable; the shared
-        key check raises ValueError when the key is missing.
-
-    """
-    await log_info(ctx, "Getting Regulations.gov agencies")
-    _require_api_key()
-
-    data = await _regulations_get(AGENCIES_URL, {}, ctx, "Agency list")
-    await log_info(ctx, "Agency listing complete")
-    return data
-
-
-@regulations_server.tool(tags={"requires-regulations-key"})
-async def get_agency(
-    agency_id: Annotated[
-        str,
-        Field(
-            description="Regulations.gov agency ID (e.g. 'EPA', 'DOT')",
-            min_length=1,
-        ),
-    ],
-    ctx: Context | None = None,
-) -> dict[str, Any]:
-    """Get detailed information about a specific federal agency.
-
-    Retrieves the full Regulations.gov record for a single agency,
-    including its name, acronym, description, and website.
-
-    Args:
-        agency_id: Regulations.gov agency ID.
-        ctx: Optional context for logging and error reporting.
-
-    Returns:
-        dict: Agency details from the Regulations.gov API.
-
-    Note:
-        Requires the REGULATIONS_API_KEY environment variable; the shared
-        key check raises ValueError when the key is missing.
-
-    """
-    await log_info(ctx, f"Getting Regulations.gov agency: {agency_id}")
-    _require_api_key()
-
-    data = await _regulations_get(f"{AGENCIES_URL}/{agency_id}", {}, ctx, "Get agency")
-    await log_info(ctx, f"Retrieved agency: {agency_id}")
     return data

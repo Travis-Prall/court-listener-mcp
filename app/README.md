@@ -12,7 +12,7 @@ A comprehensive Model Context Protocol (MCP) server for accessing the CourtListe
   - `get.py`: Get tools (opinion, docket, audio, court, person, cluster)
   - `citation.py`: Citation lookup, parsing, batch, and enhanced tools
   - `govinfo.py`: GovInfo statute search and lookup tools (USC, Statutes at Large, PLAW, COMPS)
-  - `regulations.py`: Regulations.gov federal rulemaking tools (documents, comments, agencies)
+  - `regulations.py`: Regulations.gov federal rulemaking tools (documents)
 - **`app/models.py`**: Pydantic models for data validation
 - **`app/config.py`**: Configuration and environment variable management
 - **`app/utils.py``: Utility functions (XML/JSON conversion, etc.)
@@ -44,7 +44,7 @@ async with Client("http://localhost:8000/mcp/") as client:
 - **tools/get.py**: Implements get tools for detailed entity retrieval (opinion, docket, audio, court, person, cluster)
 - **tools/citation.py**: Implements citation lookup, parsing, batch, and enhanced tools
 - **tools/govinfo.py**: Implements GovInfo statute search and lookup tools (USCODE, STATUTE, PLAW, COMPS collections)
-- **tools/regulations.py**: Implements Regulations.gov tools (document search/retrieval, public comments, agency data)
+- **tools/regulations.py**: Implements Regulations.gov tools (document search/retrieval)
 - **models.py**: Pydantic models for API responses and validation
 - **config.py**: Loads environment and configures logging
 - **utils.py**: XML/JSON conversion, helpers
@@ -82,16 +82,10 @@ Long-running tools (`citation_batch_lookup`, `citation_batch_lookup_citations`, 
 | citation_extract_citations_from_text | text (required)                                | Extract all citations from a block of text        |
 | statutes_search_statutes     | query (required), collection, congress, title_number, section, start_date, end_date, page_size, offset_mark — API key required | Search US statute collections                     |
 | statutes_get_uscode_title    | title_number (required), edition, chapter, section, page_size, offset_mark — API key required | Find USC sections within a title                  |
-| statutes_get_public_laws_by_congress | congress (required), law_type, law_number, start_date, end_date, page_size, offset_mark — API key required | Look up public/private laws by Congress           |
-| statutes_get_statutes_at_large | volume (required), page, congress, page_size, offset_mark — API key required | Search Statutes at Large by volume                |
 | statutes_get_statute_content | package_id (required), content_type, granule_id — API key required | Get statute package summary or download links     |
 | statutes_list_statute_collections | none — no API call                                     | List statute collections with descriptions        |
 | regulations_search_documents     | query (required), filter_agency, filter_posted_date, filter_document_type, sort, page_size (5-250), page — API key required | Search federal rulemaking documents             |
 | regulations_get_document         | document_id (required), include_attachments — API key required | Get detailed regulation document information      |
-| regulations_search_comments      | document_id (required), page_size (5-250), page — API key required | List public comments filed on a document         |
-| regulations_get_comment          | comment_id (required) — API key required               | Get detailed public comment information           |
-| regulations_get_agencies         | none (live endpoint rejects pagination) — API key required | List federal agencies on Regulations.gov         |
-| regulations_get_agency           | agency_id (required) — API key required                | Get detailed federal agency information          |
 
 ## Usage Examples
 
@@ -131,10 +125,10 @@ extract_citations_from_text(text="See 410 U.S. 113 and 42 USC § 1988.")
 statutes_get_uscode_title(title_number="42", section="540b")
 ```
 
-### Look Up Public Laws by Congress
+### Get Statute Package Content
 
 ```python
-statutes_get_public_laws_by_congress(congress=117, law_type="public")
+statutes_get_statute_content(package_id="PLAW-117publ58", content_type="summary")
 ```
 
 ## Common Use Cases

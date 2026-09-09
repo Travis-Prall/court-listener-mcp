@@ -78,15 +78,13 @@ mcp: FastMCP[Any] = FastMCP(
         "Statutes at Large, Public and Private Laws, and Statutes "
         "Compilations through the GovInfo API (requires GOVINFO_API_KEY), "
         "and Regulations.gov tools for searching federal rulemaking "
-        "documents, public comments, and agencies (requires "
-        "REGULATIONS_API_KEY). "
+        "documents (requires REGULATIONS_API_KEY). "
         "Available tools include: search operations for opinions/cases/audio/"
         "dockets/people, get operations for specific records by ID, "
         "comprehensive citation tools for parsing, validating, and looking "
         "up legal citations, GovInfo statute tools for searching and "
         "retrieving enacted federal laws, and Regulations.gov tools for "
-        "searching federal rulemaking documents, public comments, and "
-        "agencies."
+        "searching federal rulemaking documents."
     ),
 )
 

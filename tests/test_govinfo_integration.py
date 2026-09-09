@@ -158,44 +158,6 @@ async def test_get_uscode_title_live(client: Client[Any]) -> None:
             assert hit["packageId"].startswith("USCODE")
 
 
-async def test_get_public_laws_by_congress_live(client: Client[Any]) -> None:
-    """A live public-laws search returns laws from the requested Congress.
-
-    Args:
-        client: FastMCP test client fixture.
-
-    """
-    async with client:
-        result = await client.call_tool(
-            "statutes_get_public_laws_by_congress",
-            {"congress": 118, "law_type": "public", "page_size": 5},
-        )
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["count"] > 0
-        for hit in data["results"]:
-            assert hit["collectionCode"] == "PLAW"
-
-
-async def test_get_statutes_at_large_live(client: Client[Any]) -> None:
-    """A live Statutes at Large volume search returns results.
-
-    Args:
-        client: FastMCP test client fixture.
-
-    """
-    async with client:
-        result = await client.call_tool(
-            "statutes_get_statutes_at_large",
-            {"volume": "135", "page_size": 5},
-        )
-        assert result.content
-        data = json.loads(result.content[0].text)
-        assert data["count"] > 0
-        for hit in data["results"]:
-            assert hit["collectionCode"] == "STATUTE"
-
-
 async def test_get_statute_content_summary_live(client: Client[Any]) -> None:
     """A live package summary returns real GovInfo package metadata.
 
