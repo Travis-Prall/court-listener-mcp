@@ -13,7 +13,7 @@ from loguru import logger
 import psutil
 
 from app.config import config
-from app.tools import citation_server, get_server, search_server
+from app.tools import citation_server, get_server, govinfo_server, search_server
 
 # Configure logging
 log_path = Path(__file__).parent / "logs" / "server.log"
@@ -57,13 +57,19 @@ mcp: FastMCP[Any] = FastMCP(
     name="CourtListener MCP Server",
     instructions=(
         "Model Context Protocol server providing LLMs with access to the "
-        "CourtListener legal database. This server enables searching for legal "
+        "CourtListener legal database and United States statutes via the "
+        "official GovInfo API. This server enables searching for legal "
         "opinions, cases, audio recordings, dockets, and people in the legal "
         "system. It also provides citation lookup, parsing, and validation "
-        "tools using both the CourtListener API and citeurl library. Available "
-        "tools include: search operations for opinions/cases/audio/dockets/"
-        "people, get operations for specific records by ID, and comprehensive "
-        "citation tools for parsing, validating, and looking up legal citations."
+        "tools using both the CourtListener API and citeurl library, plus "
+        "statute search and lookup tools covering the United States Code, "
+        "Statutes at Large, Public and Private Laws, and Statutes "
+        "Compilations through the GovInfo API (requires GOVINFO_API_KEY). "
+        "Available tools include: search operations for opinions/cases/audio/"
+        "dockets/people, get operations for specific records by ID, "
+        "comprehensive citation tools for parsing, validating, and looking "
+        "up legal citations, and GovInfo statute tools for searching and "
+        "retrieving enacted federal laws."
     ),
 )
 
@@ -108,7 +114,7 @@ def status() -> dict[str, Any]:
             "cpu_percent": round(process.cpu_percent(interval=0.1), 1),
         },
         "server": {
-            "tools_available": ["search", "get", "citation"],
+            "tools_available": ["search", "get", "citation", "statutes"],
             "transport": "streamable-http",
             "api_base": "https://www.courtlistener.com/api/rest/v4/",
             "host": config.host,
@@ -132,6 +138,10 @@ def setup() -> None:
     # Mount citation tools under the "citation" namespace
     mcp.mount(citation_server, namespace="citation")
     logger.info("Mounted citation server tools")
+
+    # Mount GovInfo statute tools under the "statutes" namespace
+    mcp.mount(govinfo_server, namespace="statutes")
+    logger.info("Mounted GovInfo statutes server tools")
 
     logger.info("Server setup complete")
 

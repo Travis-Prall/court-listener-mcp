@@ -15,6 +15,7 @@ KEYED_MODULES: tuple[str, ...] = (
     "app.tools.get",
     "app.tools.search",
     "app.tools.citation",
+    "app.tools.govinfo",
 )
 
 FAKE_API_KEY = "test-api-key-12345"
