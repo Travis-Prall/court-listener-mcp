@@ -7,12 +7,16 @@ import os
 from pathlib import Path
 import sys
 import tomllib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastmcp import FastMCP
 from fastmcp_tasks import TasksExtension
 from loguru import logger
 import psutil
+from starlette.responses import JSONResponse
+
+if TYPE_CHECKING:
+    from starlette.requests import Request
 
 from app.config import config
 from app.tools import (
@@ -166,12 +170,42 @@ def status() -> dict[str, Any]:
                 group for group in ALL_TOOL_GROUPS if group not in DISABLED_TOOL_GROUPS
             ],
             "tools_disabled": list(DISABLED_TOOL_GROUPS),
-            "transport": "streamable-http",
+            "transport": "http",
             "api_base": "https://www.courtlistener.com/api/rest/v4/",
             "host": config.host,
             "port": config.mcp_port,
         },
     }
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> JSONResponse:
+    """Return a lightweight liveness probe for load balancers and containers.
+
+    Custom routes are unauthenticated by design, so this endpoint reports
+    only coarse status data and no tool, key, or environment details. Use
+    it for Docker ``HEALTHCHECK``, Kubernetes probes, and uptime monitoring
+    (see the FastMCP HTTP deployment guide).
+
+    Args:
+        request: The incoming Starlette request.
+
+    Returns:
+        JSONResponse: A JSON body with ``status``, ``service``, ``version``,
+        and ``timestamp`` fields.
+
+    """
+    client_host = request.client.host if request.client else "unknown"
+    logger.debug(f"Health check requested from {client_host}")
+    # Drain (and discard) any request body so the probe connection is
+    # cleanly handled before the response is sent.
+    await request.body()
+    return JSONResponse({
+        "status": "healthy",
+        "service": "CourtListener MCP Server",
+        "version": get_version(),
+        "timestamp": datetime.now(UTC).isoformat(),
+    })
 
 
 def disable_tools_with_missing_api_keys() -> list[str]:
@@ -240,8 +274,8 @@ setup()
 
 
 async def main() -> None:
-    """Run the CourtListener MCP server with streamable-http transport."""
-    logger.info("Starting CourtListener MCP server with streamable-http transport")
+    """Run the CourtListener MCP server with HTTP (streamable) transport."""
+    logger.info("Starting CourtListener MCP server with HTTP (streamable) transport")
     logger.info(
         f"Server configuration: host={config.host}, port={config.mcp_port}, "
         f"log_level={config.courtlistener_log_level}"
@@ -249,7 +283,7 @@ async def main() -> None:
 
     try:
         await mcp.run_async(
-            transport="streamable-http",
+            transport="http",
             host=config.host,
             port=config.mcp_port,
             path="/mcp/",

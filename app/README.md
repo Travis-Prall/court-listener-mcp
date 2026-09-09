@@ -20,12 +20,13 @@ A comprehensive Model Context Protocol (MCP) server for accessing the CourtListe
 
 ## Server Transport
 
-The server is configured to use **streamable-http** transport by default, making it accessible via HTTP at `http://localhost:8000/mcp/`. This allows:
+The server is configured to use the **HTTP** (streamable) transport by default, making it accessible via HTTP at `http://localhost:8000/mcp/`. This allows:
 
 - **HTTP-based access**: Standard HTTP requests for web-based deployments
 - **External connections**: Server binds to `0.0.0.0` for network accessibility
 - **RESTful interface**: Modern HTTP transport for better integration
 - **Production ready**: Suitable for containerized and cloud deployments
+- **Health endpoint**: Unauthenticated `GET /health` liveness probe (returns status, version, and timestamp) for load balancers, Docker `HEALTHCHECK`, and Kubernetes probes
 
 To connect to the server programmatically:
 
