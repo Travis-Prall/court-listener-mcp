@@ -10,11 +10,18 @@ import tomllib
 from typing import Any
 
 from fastmcp import FastMCP
+from fastmcp_tasks import TasksExtension
 from loguru import logger
 import psutil
 
 from app.config import config
-from app.tools import citation_server, get_server, govinfo_server, search_server
+from app.tools import (
+    citation_server,
+    get_server,
+    govinfo_server,
+    regulations_server,
+    search_server,
+)
 
 # Configure logging
 log_path = Path(__file__).parent / "logs" / "server.log"
@@ -65,17 +72,35 @@ mcp: FastMCP[Any] = FastMCP(
         "tools using both the CourtListener API and citeurl library, plus "
         "statute search and lookup tools covering the United States Code, "
         "Statutes at Large, Public and Private Laws, and Statutes "
-        "Compilations through the GovInfo API (requires GOVINFO_API_KEY). "
+        "Compilations through the GovInfo API (requires GOVINFO_API_KEY), "
+        "and Regulations.gov tools for searching federal rulemaking "
+        "documents, public comments, and agencies (requires "
+        "REGULATIONS_API_KEY). "
         "Available tools include: search operations for opinions/cases/audio/"
         "dockets/people, get operations for specific records by ID, "
         "comprehensive citation tools for parsing, validating, and looking "
-        "up legal citations, and GovInfo statute tools for searching and "
-        "retrieving enacted federal laws."
+        "up legal citations, GovInfo statute tools for searching and "
+        "retrieving enacted federal laws, and Regulations.gov tools for "
+        "searching federal rulemaking documents, public comments, and "
+        "agencies."
     ),
 )
 
+# Register the MCP background tasks extension (SEP-2663). Long-running
+# tools marked with task=True (e.g. citation batch lookups, statute
+# content downloads) can then execute in the background for clients
+# that opt in to the tasks capability. Uses the in-memory backend by
+# default; configure FASTMCP_DOCKET_URL for a Redis-backed deployment.
+mcp.add_extension(TasksExtension())
+
 # All tool groups exposed by this server, in a stable reporting order.
-ALL_TOOL_GROUPS: tuple[str, ...] = ("search", "get", "citation", "statutes")
+ALL_TOOL_GROUPS: tuple[str, ...] = (
+    "search",
+    "get",
+    "citation",
+    "statutes",
+    "regulations",
+)
 
 # API key env vars mapped to the tool groups they gate. Each entry is
 # (environment variable, tool tag, tuple of tool-group names). Tools are
@@ -89,6 +114,7 @@ API_KEY_TOOL_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         ("search", "get", "citation"),
     ),
     ("GOVINFO_API_KEY", "requires-govinfo-key", ("statutes",)),
+    ("REGULATIONS_API_KEY", "requires-regulations-key", ("regulations",)),
 )
 
 # Names of tool groups disabled at startup due to missing API keys.
@@ -197,6 +223,10 @@ def setup() -> None:
     # Mount GovInfo statute tools under the "statutes" namespace
     mcp.mount(govinfo_server, namespace="statutes")
     logger.info("Mounted GovInfo statutes server tools")
+
+    # Mount Regulations.gov tools under the "regulations" namespace
+    mcp.mount(regulations_server, namespace="regulations")
+    logger.info("Mounted Regulations.gov server tools")
 
     # Hide tool groups whose API keys are missing so clients never see
     # tools that would fail on every call.

@@ -46,26 +46,42 @@ def auth_headers() -> dict[str, str]:
 async def log_info(ctx: Context | None, message: str) -> None:
     """Log an informational message through the context or fallback logger.
 
+    Always records the message with the process logger, then mirrors it
+    to the MCP context when one is active. Context mirroring is
+    best-effort: in background task execution the worker has no MCP
+    session, so context errors are swallowed after the process logger
+    has captured the message.
+
     Args:
         ctx: Optional FastMCP context used when a tool call is active.
         message: The informational message to log.
 
     """
+    logger.info(message)
     if ctx:
-        await ctx.info(message)
-    else:
-        logger.info(message)
+        try:
+            await ctx.info(message)
+        except Exception as exc:
+            logger.debug(f"MCP context logging unavailable: {exc}")
 
 
 async def log_error(ctx: Context | None, message: str) -> None:
     """Log an error message through the context or fallback logger.
+
+    Always records the message with the process logger, then mirrors it
+    to the MCP context when one is active. Context mirroring is
+    best-effort: in background task execution the worker has no MCP
+    session, so context errors are swallowed after the process logger
+    has captured the message.
 
     Args:
         ctx: Optional FastMCP context used when a tool call is active.
         message: The error message to log.
 
     """
+    logger.error(message)
     if ctx:
-        await ctx.error(message)
-    else:
-        logger.error(message)
+        try:
+            await ctx.error(message)
+        except Exception as exc:
+            logger.debug(f"MCP context logging unavailable: {exc}")

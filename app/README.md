@@ -1,6 +1,6 @@
 # CourtListener MCP Server v2.0
 
-A comprehensive Model Context Protocol (MCP) server for accessing the CourtListener API v4 and the GovInfo statute collections, providing powerful legal and statutory research capabilities optimized for Large Language Model (LLM) interactions.
+A comprehensive Model Context Protocol (MCP) server for accessing the CourtListener API v4, the GovInfo statute collections, and the Regulations.gov federal rulemaking database, providing powerful legal, statutory, and regulatory research capabilities optimized for Large Language Model (LLM) interactions.
 
 > **Latest Update (June 2025):** All MCP tools and modules are documented. Pydantic v2 compatibility, type annotations, and import structure are up-to-date. Server passes all lint checks and includes a comprehensive test suite.
 
@@ -12,6 +12,7 @@ A comprehensive Model Context Protocol (MCP) server for accessing the CourtListe
   - `get.py`: Get tools (opinion, docket, audio, court, person, cluster)
   - `citation.py`: Citation lookup, parsing, batch, and enhanced tools
   - `govinfo.py`: GovInfo statute search and lookup tools (USC, Statutes at Large, PLAW, COMPS)
+  - `regulations.py`: Regulations.gov federal rulemaking tools (documents, comments, agencies)
 - **`app/models.py`**: Pydantic models for data validation
 - **`app/config.py`**: Configuration and environment variable management
 - **`app/utils.py``: Utility functions (XML/JSON conversion, etc.)
@@ -42,13 +43,16 @@ async with Client("http://localhost:8000/mcp/") as client:
 - **tools/get.py**: Implements get tools for detailed entity retrieval (opinion, docket, audio, court, person, cluster)
 - **tools/citation.py**: Implements citation lookup, parsing, batch, and enhanced tools
 - **tools/govinfo.py**: Implements GovInfo statute search and lookup tools (USCODE, STATUTE, PLAW, COMPS collections)
+- **tools/regulations.py**: Implements Regulations.gov tools (document search/retrieval, public comments, agency data)
 - **models.py**: Pydantic models for API responses and validation
 - **config.py**: Loads environment and configures logging
 - **utils.py**: XML/JSON conversion, helpers
 
 ## MCP Tools and Parameters
 
-Every key-required tool is tagged (`requires-courtlistener-key` or `requires-govinfo-key`). At startup the server checks `COURT_LISTENER_API_KEY` and `GOVINFO_API_KEY`: any group whose key is missing is disabled automatically, logged as a warning, and hidden from clients (the `status` tool reports this under `tools_disabled`). Set the key and restart to re-enable the group.
+Every key-required tool is tagged (`requires-courtlistener-key`, `requires-govinfo-key`, or `requires-regulations-key`). At startup the server checks `COURT_LISTENER_API_KEY`, `GOVINFO_API_KEY`, and `REGULATIONS_API_KEY`: any group whose key is missing is disabled automatically, logged as a warning, and hidden from clients (the `status` tool reports this under `tools_disabled`). Set the key and restart to re-enable the group.
+
+Long-running tools (`citation_batch_lookup`, `citation_batch_lookup_citations`, `statutes_get_statute_content`) are additionally marked `task=True` for the MCP background tasks extension, so task-capable clients can execute them in the background.
 
 | Tool Name                    | Parameters (all optional unless noted)                                                                 | Description                                      |
 |------------------------------|------------------------------------------------------------------------------------------------------|--------------------------------------------------|
@@ -81,6 +85,12 @@ Every key-required tool is tagged (`requires-courtlistener-key` or `requires-gov
 | statutes_get_statutes_at_large | volume (required), page, congress, page_size, offset_mark — API key required | Search Statutes at Large by volume                |
 | statutes_get_statute_content | package_id (required), content_type, granule_id — API key required | Get statute package summary or download links     |
 | statutes_list_statute_collections | none — no API call                                     | List statute collections with descriptions        |
+| regulations_search_documents     | query (required), filter_agency, filter_posted_date, filter_document_type, sort, page_size (5-250), page — API key required | Search federal rulemaking documents             |
+| regulations_get_document         | document_id (required), include_attachments — API key required | Get detailed regulation document information      |
+| regulations_search_comments      | document_id (required), page_size (5-250), page — API key required | List public comments filed on a document         |
+| regulations_get_comment          | comment_id (required) — API key required               | Get detailed public comment information           |
+| regulations_get_agencies         | none (live endpoint rejects pagination) — API key required | List federal agencies on Regulations.gov         |
+| regulations_get_agency           | agency_id (required) — API key required                | Get detailed federal agency information          |
 
 ## Usage Examples
 

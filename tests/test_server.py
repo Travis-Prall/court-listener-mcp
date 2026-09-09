@@ -105,6 +105,7 @@ async def test_status_tool(client: Client[Any]) -> None:
             "get",
             "citation",
             "statutes",
+            "regulations",
         ]
         assert data["server"]["tools_disabled"] == []
         assert data["server"]["transport"] == "streamable-http"
@@ -492,6 +493,7 @@ async def test_missing_govinfo_key_disables_statute_tools(
                 "search",
                 "get",
                 "citation",
+                "regulations",
             ]
             assert data["server"]["tools_disabled"] == ["statutes"]
     finally:
