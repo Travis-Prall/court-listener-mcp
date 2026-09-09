@@ -545,7 +545,7 @@ async def get_statutes_at_large(
     return data
 
 
-@govinfo_server.tool(tags={"requires-govinfo-key"})
+@govinfo_server.tool(tags={"requires-govinfo-key"}, task=True)
 async def get_statute_content(
     package_id: Annotated[
         str, Field(description="Package ID (e.g., 'PLAW-117publ58')")

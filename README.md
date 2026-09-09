@@ -78,6 +78,26 @@ GovInfo requests authenticate with an `X-Api-Key` HTTP header. If `GOVINFO_API_K
 
 The `status` tool reports which tool groups are live under `tools_available` and which are disabled (with the missing key) under `tools_disabled`.
 
+## 📜 Getting a Regulations.gov API Key
+
+The federal rulemaking tools (`regulations_*`) use the official Regulations.gov API and **require** a `REGULATIONS_API_KEY`.
+
+1. **Get a free key**: Sign up at [api.data.gov](https://api.data.gov/signup/) — the same key works for `api.regulations.gov`.
+
+2. **Configure the Server**: Add the key to your `.env` file:
+
+   ```bash
+   REGULATIONS_API_KEY=your-api-data-gov-key-here
+   ```
+
+Regulations.gov requests authenticate with an `X-Api-Key` HTTP header. The same automatic startup behavior applies: if `REGULATIONS_API_KEY` is missing, the `regulations_*` tools are disabled and hidden from clients until the key is set and the server is restarted.
+
+**Note:** the Regulations.gov API rejects `page[size]` values below 5, so the search tools enforce a page size between 5 and 250.
+
+## ⚙️ Background Tasks (MCP Tasks Extension)
+
+The server registers the MCP background tasks extension (SEP-2663). Long-running tools — `citation_batch_lookup`, `citation_batch_lookup_citations`, and `statutes_get_statute_content` — are marked `task=True`, so clients that opt in to the tasks capability can run them in the background with progress polling instead of blocking. Calls from ordinary clients still run synchronously, so nothing changes for existing integrations. FastMCP uses an in-memory task backend by default; set `FASTMCP_DOCKET_URL` (e.g. `redis://localhost:6379/0`) for a persistent, horizontally scalable deployment.
+
 ## 🐳 Docker Quick Start (Recommended)
 
 The fastest way to get started is with Docker. Pre-built images are available from multiple registries.
@@ -239,6 +259,13 @@ The CourtListener MCP Server provides these production-ready tools (see [app/REA
   - `statutes_get_statutes_at_large` — Search Statutes at Large by volume
   - `statutes_get_statute_content` — Retrieve package/granule summaries or XML/PDF/text download links
   - `statutes_list_statute_collections` — List available statute collections (no API call)
+- **Regulations.gov Tools (Federal Rulemaking — `REGULATIONS_API_KEY` required):**
+  - `regulations_search_documents` — Search federal rulemaking documents by keyword, agency, type, or posted date
+  - `regulations_get_document` — Get full document details, optionally with attachments
+  - `regulations_search_comments` — List public comments filed on a document
+  - `regulations_get_comment` — Get detailed information about a public comment
+  - `regulations_get_agencies` — List the federal agencies on Regulations.gov
+  - `regulations_get_agency` — Get detailed information about a federal agency
 
 See [app/README.md](app/README.md) for a full reference of all tools, parameters, and usage examples.
 
@@ -364,6 +391,17 @@ Pre-built images are available from:
 | GitHub Container Registry | `ghcr.io/travis-prall/court-listener-mcp:latest` |
 
 Images are published to the GitHub Container Registry automatically by [GitHub Actions](.github/workflows/docker-publish.yml) on every push to `main` and on `v*` version tags. Multi-arch builds (`linux/amd64` and `linux/arm64`) are supported.
+
+## ⚖️ License
+
+This project is licensed under the **PolyForm Noncommercial License**. You are free to use, modify, and self-host this MCP server for personal, academic, or non-commercial legal research.
+
+Integration into a commercial product, hosted service, or paid application is strictly prohibited without explicit permission.
+
+## ☕ Support the Project
+
+If this tool saves you time navigating court dockets or the eCFR, consider supporting its continued development!
+[![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](YOUR_LINK_HERE)
 
 ## 💖 Support
 

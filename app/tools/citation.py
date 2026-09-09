@@ -548,7 +548,7 @@ async def verify_citation_format(
     return result
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(tags={"requires-courtlistener-key"}, task=True)
 async def batch_lookup(
     citations: Annotated[
         list[str],
@@ -662,7 +662,7 @@ async def lookup_citation(
     return await _lookup_citations_batch([citation], ctx)
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(tags={"requires-courtlistener-key"}, task=True)
 async def batch_lookup_citations(
     citations: Annotated[
         list[str],
