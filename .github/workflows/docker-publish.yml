@@ -77,6 +77,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The daemon has no GHCR credentials; the CLI login (login-action) does.
+      # Pull with the CLI first so Trivy can scan the image via the socket.
+      - name: Pull published image (client-side ghcr credentials)
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
       # Blocks the workflow on unpatched CRITICAL/HIGH findings.
       # The scanner container is intentionally `latest` so the vulnerability
       # database stays current.
