@@ -10,23 +10,49 @@ services:
     container_name: court-listener-mcp-server
     # Run the MCP server with HTTP (streamable) transport
     command: python -m app
+    # PID 1: reap zombie children and forward signals for graceful shutdown
+    init: true
     ports:
       - "8785:8785"
     # Liveness probe against the unauthenticated /health route
+    # (python stdlib — the image ships no curl/wget)
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8785/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8785/health', timeout=4)"]
       interval: 30s
       timeout: 5s
       start_period: 15s
       retries: 3
+    # Secrets and configuration are injected at runtime (never baked into the image)
     env_file:
       - .env
     environment:
       - LOG_LEVEL=INFO
       - API_BASE_URL=https://www.courtlistener.com/api/rest/v4
+    # --- Runtime hardening (defense in depth) ---
+    security_opt:
+      - no-new-privileges:true   # block privilege escalation via setuid binaries
+    cap_drop:
+      - ALL                      # server binds 8785 (>1024) as uid 10001: no caps needed
+    read_only: true              # immutable root filesystem
+    tmpfs:                       # writable locations (noexec, nosuid)
+      - /tmp:uid=10001,gid=10001,noexec,nosuid,size=64m
+      - /src/app/logs:uid=10001,gid=10001,noexec,nosuid,size=64m
     restart: unless-stopped
     networks:
       - mcp-network
+    # Rotate container stdout logs so they cannot fill the host disk
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Resource limits (DoS containment)
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 128
 
 networks:
   mcp-network:

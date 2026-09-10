@@ -170,6 +170,15 @@ docker run -d \
        environment:
          - LOG_LEVEL=INFO
          - API_BASE_URL=https://www.courtlistener.com/api/rest/v4
+       init: true
+       security_opt:
+         - no-new-privileges:true
+       cap_drop:
+         - ALL
+       read_only: true
+       tmpfs:
+         - /tmp:uid=10001,gid=10001,noexec,nosuid,size=64m
+         - /src/app/logs:uid=10001,gid=10001,noexec,nosuid,size=64m
        restart: unless-stopped
    ```
 
@@ -242,7 +251,7 @@ monitoring systems, and container orchestrators:
 
 ```bash
 curl http://localhost:8785/health
-# {"status":"healthy","service":"CourtListener ++ MCP Server","version":"0.2.1",...}
+# {"status":"healthy","service":"CourtListener ++ MCP Server","version":"0.2.2",...}
 ```
 
 The Docker image ships with a `HEALTHCHECK` against this endpoint and the

@@ -1,0 +1,24 @@
+# Trivy vulnerability waivers (triaged 2026-09-10)
+#
+# Both findings below are reported against packages that exist ONLY as
+# build-provenance metadata inside wheel-embedded SBOM files
+# (*.dist-info/sboms), never as installed runtime packages.
+#
+# Evidence verified at triage time:
+# - `uv.lock` contains neither msgpack nor setuptools (grep count = 0)
+# - inside the built image: `python -c "import msgpack/setuptools"` fails with
+#   ModuleNotFoundError, and `find / -name "*msgpack*" -o -name "*setuptools*"`
+#   returns no dist-info directories (only pip's vendored copy at
+#   /usr/local/lib/python3.14/site-packages/pip/_vendor/msgpack, which is part
+#   of pip itself, not an installed msgpack distribution)
+# - Trivy JSON reports both findings with "AnalyzedBy": "sbom" and no FilePath,
+#   attributed to a base-image layer
+#
+# Re-evaluate these waivers when the base image or the producing wheels are
+# updated (pip vendors msgpack; upstream wheels embed their build SBOMs).
+
+# msgpack 1.1.2 (build-time dep recorded in wheel-embedded SBOM; fixed in 1.2.1)
+GHSA-6v7p-g79w-8964
+
+# setuptools 70.3.0 (build-time dep recorded in wheel-embedded SBOM; fixed 78.1.1)
+CVE-2025-47273

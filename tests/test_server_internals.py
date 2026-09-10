@@ -14,7 +14,7 @@ from app.server import get_version, is_docker, main
 
 def test_get_version_matches_pyproject() -> None:
     """get_version returns the version declared in pyproject.toml."""
-    assert get_version() == "0.2.0"
+    assert get_version() == "0.2.2"
 
 
 def test_get_version_handles_read_errors(
