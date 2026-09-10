@@ -438,6 +438,14 @@ Pre-built images are available from:
 
 Images are published to the GitHub Container Registry automatically by [GitHub Actions](.github/workflows/docker-publish.yml) on every push to `main` and on `v*` version tags. Multi-arch builds (`linux/amd64` and `linux/arm64`) are supported. Docker Hub and the private `docker.vesha.net` registry are published manually with the same multi-arch image (`docker buildx build --platform linux/amd64,linux/arm64`), and versioned tags follow the `X.Y.Z` + `latest` + git-short-SHA conventions.
 
+Manual publishing is automated by [`scripts/publish_images.sh`](scripts/publish_images.sh), which builds the same multi-arch image and pushes it to Docker Hub and the private registry in one step:
+
+```bash
+scripts/publish_images.sh          # auto-derives the version (git tag at HEAD, then pyproject.toml)
+scripts/publish_images.sh 0.2.2    # publish an explicit version
+scripts/publish_images.sh --ghcr   # also publish to GHCR (normally handled by CI)
+```
+
 ## ⚖️ License
 
 This project is licensed under the **PolyForm Noncommercial License**. You are free to use, modify, and self-host this MCP server for personal, academic, or non-commercial legal research.
