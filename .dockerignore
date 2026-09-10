@@ -91,3 +91,30 @@ temp/
 # OS
 .DS_Store
 Thumbs.db
+
+# Dev containers and agent/editor tooling (not needed in the image)
+.devcontainer/
+.clinerules/
+.claude/
+.serena/
+.agents/
+
+# Tests, scripts and local build tooling
+tests/
+scripts/
+docs/
+
+# Workspace metadata
+CourtListener.code-workspace
+example.env
+
+# Secrets hygiene
+*.pem
+*.key
+*.keyring
+*.p12
+*.pfx
+*.crt
+secrets/
+.secrets/
+credentials*
