@@ -19,7 +19,13 @@ from fastmcp import Context, FastMCP
 import httpx
 from pydantic import Field
 
-from app.tools.common import DEFAULT_TIMEOUT, log_error, log_info
+from app.tools.common import (
+    DEFAULT_TIMEOUT,
+    log_error,
+    log_info,
+    request_with_retry,
+)
+from app.tools.params import read_only_annotations
 
 # Regulations.gov API configuration
 API_KEY: str | None = os.getenv("REGULATIONS_API_KEY")
@@ -93,15 +99,17 @@ async def _regulations_get(
 
     """
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                url,
-                params=params,
-                headers=_regulations_headers(),
-                timeout=DEFAULT_TIMEOUT,
-            )
-            response.raise_for_status()
-            data: dict[str, Any] = response.json()
+        response = await request_with_retry(
+            "GET",
+            url,
+            params=params,
+            headers=_regulations_headers(),
+            request_timeout=DEFAULT_TIMEOUT,
+            ctx=ctx,
+            error_label=error_label,
+        )
+        response.raise_for_status()
+        data: dict[str, Any] = response.json()
     except httpx.HTTPStatusError as e:
         await log_error(ctx, f"{error_label} HTTP error: {e}")
         raise
@@ -111,7 +119,13 @@ async def _regulations_get(
     return data
 
 
-@regulations_server.tool(tags={"requires-regulations-key"})
+@regulations_server.tool(
+    name="search_documents",
+    title="Search Federal Rulemaking Documents",
+    tags={"requires-regulations-key", "regulations"},
+    annotations=read_only_annotations("Search Federal Rulemaking Documents"),
+    timeout=30.0,
+)
 async def search_documents(
     query: Annotated[
         str,
@@ -214,7 +228,13 @@ async def search_documents(
     return data
 
 
-@regulations_server.tool(tags={"requires-regulations-key"})
+@regulations_server.tool(
+    name="get_document",
+    title="Get Regulation Document",
+    tags={"requires-regulations-key", "regulations"},
+    annotations=read_only_annotations("Get Regulation Document"),
+    timeout=30.0,
+)
 async def get_document(
     document_id: Annotated[
         str,

@@ -13,12 +13,15 @@ from fastmcp import FastMCP
 from fastmcp_tasks import TasksExtension
 from loguru import logger
 import psutil
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
 if TYPE_CHECKING:
     from starlette.requests import Request
 
 from app.config import config
+from app.middleware import register_middleware
 from app.tools import (
     citation_server,
     get_server,
@@ -26,6 +29,7 @@ from app.tools import (
     regulations_server,
     search_server,
 )
+from app.tools.params import read_only_annotations
 
 # Configure logging
 log_path = Path(__file__).parent / "logs" / "server.log"
@@ -95,6 +99,11 @@ mcp: FastMCP[Any] = FastMCP(
 # default; configure FASTMCP_DOCKET_URL for a Redis-backed deployment.
 mcp.add_extension(TasksExtension())
 
+# Register cross-cutting observability middleware (error handling, timing,
+# logging) on the root server. Parent middleware runs for every request,
+# including those routed to the namespace-mounted tool subservers below.
+register_middleware(mcp)
+
 # All tool groups exposed by this server, in a stable reporting order.
 ALL_TOOL_GROUPS: tuple[str, ...] = (
     "search",
@@ -124,7 +133,13 @@ API_KEY_TOOL_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 DISABLED_TOOL_GROUPS: list[str] = []
 
 
-@mcp.tool()
+@mcp.tool(
+    name="status",
+    title="Server Status",
+    tags={"system"},
+    annotations=read_only_annotations("Server Status"),
+    timeout=10.0,
+)
 def status() -> dict[str, Any]:
     """Check the status of the CourtListener ++ MCP server.
 
@@ -271,12 +286,72 @@ def setup() -> None:
 setup()
 
 
+def _cors_middleware() -> list[Middleware]:
+    """Build Starlette middleware for browser-based MCP clients, if configured.
+
+    CORS is only needed when JavaScript running in a browser connects
+    directly to the MCP server (e.g. the MCP Inspector); most LLM clients
+    do not need it. When ``CORS_ALLOW_ORIGINS`` is empty (the default) no
+    middleware is returned, so the server emits no CORS headers.
+
+    Returns:
+        list[Middleware]: A single ``CORSMiddleware`` entry when browser
+        origins are configured, otherwise an empty list.
+
+    """
+    if not config.cors_allow_origins:
+        return []
+    logger.info(f"Enabling CORS for browser origins: {config.cors_allow_origins}")
+    return [
+        Middleware(
+            CORSMiddleware,
+            allow_origins=config.cors_allow_origins,
+            allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+            allow_headers=[
+                "mcp-protocol-version",
+                "mcp-session-id",
+                "Authorization",
+                "Content-Type",
+            ],
+            expose_headers=["mcp-session-id"],
+        )
+    ]
+
+
+def build_asgi_app() -> Any:
+    """Create the Streamable HTTP ASGI application for Uvicorn deployment.
+
+    Exposes the same MCP endpoint, custom ``/health`` route, and middleware
+    as the direct-run path, but as a standard ASGI application so it can be
+    served by Uvicorn (``uvicorn app.server:app``), including multiple
+    workers when stateless HTTP is enabled.
+
+    Stateless HTTP and Host/Origin protection are intentionally not passed
+    here so FastMCP resolves them from its own settings (``FASTMCP_STATELESS_HTTP``
+    and ``FASTMCP_HTTP_HOST_ORIGIN_PROTECTION``), matching the direct-run path.
+
+    Returns:
+        Any: The Starlette ASGI application produced by ``mcp.http_app``.
+
+    """
+    return mcp.http_app(
+        path=config.mcp_path,
+        middleware=_cors_middleware(),
+    )
+
+
+# ASGI application object for production ``uvicorn app.server:app``
+# deployments. ``python -m app`` (below) uses the direct-run path instead;
+# both expose the identical MCP endpoint, /health route, and middleware.
+app = build_asgi_app()
+
+
 async def main() -> None:
     """Run the CourtListener ++ MCP server with HTTP (streamable) transport."""
     logger.info("Starting CourtListener ++ MCP server with HTTP (streamable) transport")
     logger.info(
         f"Server configuration: host={config.host}, port={config.mcp_port}, "
-        f"log_level={config.courtlistener_log_level}"
+        f"path={config.mcp_path}, log_level={config.courtlistener_log_level}"
     )
 
     try:
@@ -284,7 +359,7 @@ async def main() -> None:
             transport="http",
             host=config.host,
             port=config.mcp_port,
-            path="/mcp/",
+            path=config.mcp_path,
             log_level=config.courtlistener_log_level.lower(),
         )
     except Exception as e:

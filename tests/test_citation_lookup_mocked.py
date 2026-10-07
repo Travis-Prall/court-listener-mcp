@@ -158,6 +158,44 @@ async def test_batch_lookup_rejects_oversized_batches(
             )
 
 
+# The live CourtListener citation-lookup endpoint returns a top-level JSON
+# array of result objects (not the {"results": [...]} envelope that earlier
+# fixtures assumed). This mirrors the real wire shape observed live.
+BROWN_CLUSTER_ID = 105221
+LIVE_LOOKUP_RESPONSE: list[dict[str, Any]] = [
+    {
+        "citation": "347 U.S. 483",
+        "normalized_citations": ["347 U.S. 483"],
+        "start_index": 0,
+        "end_index": 12,
+        "status": 200,
+        "error_message": "",
+        "clusters": [
+            {"id": BROWN_CLUSTER_ID, "case_name": "Brown v. Board of Education"}
+        ],
+    }
+]
+
+
+@pytest.mark.asyncio
+async def test_lookup_citation_normalizes_live_array_response(
+    client: Client[Any], api_key: str
+) -> None:
+    """A bare-list API response is wrapped into the {"results": [...]} envelope."""
+    async with client, respx.mock:
+        respx.post(CITATION_LOOKUP_URL).mock(
+            return_value=httpx.Response(200, json=LIVE_LOOKUP_RESPONSE)
+        )
+        result = await client.call_tool(
+            "citation_lookup_citation", {"citation": "347 U.S. 483"}
+        )
+
+        assert result.content
+        data = json.loads(result.content[0].text)
+        assert data["results"][0]["citation"] == "347 U.S. 483"
+        assert data["results"][0]["clusters"][0]["id"] == BROWN_CLUSTER_ID
+
+
 @pytest.mark.asyncio
 async def test_citation_http_status_error(client: Client[Any], api_key: str) -> None:
     """HTTP errors from the citation API surface as ToolError."""

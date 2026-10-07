@@ -23,6 +23,17 @@ Tests are located in the `tests/` directory. All test modules are prefixed with 
   - Test individual modules and functions (e.g., `test_config.py`)
 - **Integration Tests:**
   - Test end-to-end server and MCP tool behavior (e.g., `test_server.py`, `test_runner.py`)
+- **Live API Integration Tests:**
+  - Exercise the real upstream APIs and skip automatically when the matching key is
+    absent, so the suite stays runnable without credentials:
+    - `test_courtlistener_integration.py` — `COURT_LISTENER_API_KEY`; covers every
+      CourtListener tool (`status`, all `search_*`, all `get_*`, and all
+      `citation_*`). Requests are spaced apart and retried with backoff on HTTP 429
+      to respect the API's ~5-requests-per-minute authenticated throttle, so a full
+      run takes several minutes.
+    - `test_govinfo_integration.py` — `GOVINFO_API_KEY`; GovInfo statute tools.
+    - `test_regulations_integration.py` — `REGULATIONS_API_KEY`; Regulations.gov
+      rulemaking document tools.
 - **Citation/Parsing Tests:**
   - Test citation parsing, extraction, and enhanced tools (e.g., `test_citeurl_integration.py`, `test_enhanced_citation_tools.py`)
 - **Logs:**

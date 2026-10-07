@@ -83,7 +83,7 @@ STOPSIGNAL SIGTERM
 # Labels for container metadata
 LABEL org.opencontainers.image.title="CourtListener ++ MCP Server" \
       org.opencontainers.image.description="Model Context Protocol server providing LLM-friendly access to legal cases and court data through the CourtListener API v4" \
-      org.opencontainers.image.version="0.2.2" \
+      org.opencontainers.image.version="0.3.0" \
       org.opencontainers.image.source="https://github.com/Travis-Prall/court-listener-mcp" \
       org.opencontainers.image.url="https://www.travisprall.com/" \
       org.opencontainers.image.vendor="Travis-Prall"
