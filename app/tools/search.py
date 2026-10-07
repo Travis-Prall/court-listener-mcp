@@ -13,7 +13,9 @@ from app.tools.common import (
     auth_headers,
     log_error,
     log_info,
+    request_with_retry,
 )
+from app.tools.params import read_only_annotations
 
 # Create the search server
 search_server: FastMCP[Any] = FastMCP(
@@ -81,15 +83,17 @@ async def _execute_search(
 
     """
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                SEARCH_URL,
-                params=params,
-                headers=auth_headers(),
-                timeout=DEFAULT_TIMEOUT,
-            )
-            response.raise_for_status()
-            data: dict[str, Any] = response.json()
+        response = await request_with_retry(
+            "GET",
+            SEARCH_URL,
+            params=params,
+            headers=auth_headers(),
+            request_timeout=DEFAULT_TIMEOUT,
+            ctx=ctx,
+            error_label="CourtListener search",
+        )
+        response.raise_for_status()
+        data: dict[str, Any] = response.json()
     except httpx.HTTPStatusError as e:
         await log_error(ctx, f"HTTP error: {e}")
         raise
@@ -101,7 +105,13 @@ async def _execute_search(
     return data
 
 
-@search_server.tool(tags={"requires-courtlistener-key"})
+@search_server.tool(
+    name="opinions",
+    title="Search Court Opinions",
+    tags={"requires-courtlistener-key", "search"},
+    annotations=read_only_annotations("Search Court Opinions"),
+    timeout=30.0,
+)
 async def opinions(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for full text of opinions")],
     court: Annotated[
@@ -167,7 +177,13 @@ async def opinions(  # ruff: ignore[too-many-arguments, too-many-positional-argu
     return await _execute_search(params, ctx, "opinions")
 
 
-@search_server.tool(tags={"requires-courtlistener-key"})
+@search_server.tool(
+    name="dockets",
+    title="Search Dockets",
+    tags={"requires-courtlistener-key", "search"},
+    annotations=read_only_annotations("Search Dockets"),
+    timeout=30.0,
+)
 async def dockets(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for docket text")],
     court: Annotated[
@@ -241,7 +257,13 @@ async def dockets(  # ruff: ignore[too-many-arguments, too-many-positional-argum
     return await _execute_search(params, ctx, "dockets")
 
 
-@search_server.tool(tags={"requires-courtlistener-key"})
+@search_server.tool(
+    name="dockets_with_documents",
+    title="Search Dockets With Documents",
+    tags={"requires-courtlistener-key", "search"},
+    annotations=read_only_annotations("Search Dockets With Documents"),
+    timeout=30.0,
+)
 async def dockets_with_documents(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[
         str,
@@ -321,7 +343,13 @@ async def dockets_with_documents(  # ruff: ignore[too-many-arguments, too-many-p
     return await _execute_search(params, ctx, "dockets with documents")
 
 
-@search_server.tool(tags={"requires-courtlistener-key"})
+@search_server.tool(
+    name="recap_documents",
+    title="Search RECAP Documents",
+    tags={"requires-courtlistener-key", "search"},
+    annotations=read_only_annotations("Search RECAP Documents"),
+    timeout=30.0,
+)
 async def recap_documents(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for document content")],
     court: Annotated[
@@ -388,7 +416,13 @@ async def recap_documents(  # ruff: ignore[too-many-arguments, too-many-position
     return await _execute_search(params, ctx, "RECAP documents")
 
 
-@search_server.tool(tags={"requires-courtlistener-key"})
+@search_server.tool(
+    name="audio",
+    title="Search Oral Argument Audio",
+    tags={"requires-courtlistener-key", "search"},
+    annotations=read_only_annotations("Search Oral Argument Audio"),
+    timeout=30.0,
+)
 async def audio(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for oral argument audio")],
     court: Annotated[
@@ -455,7 +489,13 @@ async def audio(  # ruff: ignore[too-many-arguments, too-many-positional-argumen
     return await _execute_search(params, ctx, "audio recordings")
 
 
-@search_server.tool(tags={"requires-courtlistener-key"})
+@search_server.tool(
+    name="people",
+    title="Search Judges and People",
+    tags={"requires-courtlistener-key", "search"},
+    annotations=read_only_annotations("Search Judges and People"),
+    timeout=30.0,
+)
 async def people(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[
         str,

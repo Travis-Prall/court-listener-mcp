@@ -13,7 +13,9 @@ from app.tools.common import (
     auth_headers,
     log_error,
     log_info,
+    request_with_retry,
 )
+from app.tools.params import read_only_annotations
 
 # Create the get server
 get_server: FastMCP[Any] = FastMCP(
@@ -65,14 +67,16 @@ async def _fetch_record(
         await log_info(ctx, "Using public API access (no authentication)")
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{API_BASE_URL}/{endpoint}/{record_id}/",
-                headers=auth_headers(),
-                timeout=DEFAULT_TIMEOUT,
-            )
-            response.raise_for_status()
-            data: dict[str, Any] = response.json()
+        response = await request_with_retry(
+            "GET",
+            f"{API_BASE_URL}/{endpoint}/{record_id}/",
+            headers=auth_headers(),
+            request_timeout=DEFAULT_TIMEOUT,
+            ctx=ctx,
+            error_label=f"CourtListener {record_label} fetch",
+        )
+        response.raise_for_status()
+        data: dict[str, Any] = response.json()
     except httpx.HTTPStatusError as e:
         await log_error(ctx, f"HTTP error getting {record_label}: {e}")
         raise
@@ -84,7 +88,13 @@ async def _fetch_record(
     return data
 
 
-@get_server.tool(tags={"requires-courtlistener-key"})
+@get_server.tool(
+    name="opinion",
+    title="Get Court Opinion",
+    tags={"requires-courtlistener-key", "get"},
+    annotations=read_only_annotations("Get Court Opinion"),
+    timeout=30.0,
+)
 async def opinion(
     opinion_id: Annotated[str, Field(description="The opinion ID to retrieve")],
     ctx: Context | None = None,
@@ -108,7 +118,13 @@ async def opinion(
     )
 
 
-@get_server.tool(tags={"requires-courtlistener-key"})
+@get_server.tool(
+    name="docket",
+    title="Get Docket",
+    tags={"requires-courtlistener-key", "get"},
+    annotations=read_only_annotations("Get Docket"),
+    timeout=30.0,
+)
 async def docket(
     docket_id: Annotated[str, Field(description="The docket ID to retrieve")],
     ctx: Context | None = None,
@@ -130,7 +146,13 @@ async def docket(
     return await _fetch_record("dockets", "docket", docket_id, ctx)
 
 
-@get_server.tool(tags={"requires-courtlistener-key"})
+@get_server.tool(
+    name="audio",
+    title="Get Audio Recording",
+    tags={"requires-courtlistener-key", "get"},
+    annotations=read_only_annotations("Get Audio Recording"),
+    timeout=30.0,
+)
 async def audio(
     audio_id: Annotated[str, Field(description="The audio recording ID to retrieve")],
     ctx: Context | None = None,
@@ -152,7 +174,13 @@ async def audio(
     return await _fetch_record("audio", "audio", audio_id, ctx)
 
 
-@get_server.tool(tags={"requires-courtlistener-key"})
+@get_server.tool(
+    name="cluster",
+    title="Get Opinion Cluster",
+    tags={"requires-courtlistener-key", "get"},
+    annotations=read_only_annotations("Get Opinion Cluster"),
+    timeout=30.0,
+)
 async def cluster(
     cluster_id: Annotated[str, Field(description="The opinion cluster ID to retrieve")],
     ctx: Context | None = None,
@@ -174,7 +202,13 @@ async def cluster(
     return await _fetch_record("clusters", "cluster", cluster_id, ctx)
 
 
-@get_server.tool(tags={"requires-courtlistener-key"})
+@get_server.tool(
+    name="person",
+    title="Get Judge or Person",
+    tags={"requires-courtlistener-key", "get"},
+    annotations=read_only_annotations("Get Judge or Person"),
+    timeout=30.0,
+)
 async def person(
     person_id: Annotated[str, Field(description="The person (judge) ID to retrieve")],
     ctx: Context | None = None,
@@ -196,7 +230,13 @@ async def person(
     return await _fetch_record("people", "person", person_id, ctx)
 
 
-@get_server.tool(tags={"requires-courtlistener-key"})
+@get_server.tool(
+    name="court",
+    title="Get Court",
+    tags={"requires-courtlistener-key", "get"},
+    annotations=read_only_annotations("Get Court"),
+    timeout=30.0,
+)
 async def court(
     court_id: Annotated[
         str, Field(description="The court ID to retrieve (e.g., 'scotus', 'ca9')")

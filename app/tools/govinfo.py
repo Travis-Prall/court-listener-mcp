@@ -19,7 +19,13 @@ from fastmcp import Context, FastMCP
 import httpx
 from pydantic import Field
 
-from app.tools.common import DEFAULT_TIMEOUT, log_error, log_info
+from app.tools.common import (
+    DEFAULT_TIMEOUT,
+    log_error,
+    log_info,
+    request_with_retry,
+)
+from app.tools.params import read_only_annotations
 
 # GovInfo API configuration
 API_KEY: str | None = os.getenv("GOVINFO_API_KEY")
@@ -105,15 +111,17 @@ async def _search_govinfo(
 
     """
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                SEARCH_URL,
-                json=request_body,
-                headers=_govinfo_headers(),
-                timeout=DEFAULT_TIMEOUT,
-            )
-            response.raise_for_status()
-            data: dict[str, Any] = response.json()
+        response = await request_with_retry(
+            "POST",
+            SEARCH_URL,
+            json=request_body,
+            headers=_govinfo_headers(),
+            request_timeout=DEFAULT_TIMEOUT,
+            ctx=ctx,
+            error_label=error_label,
+        )
+        response.raise_for_status()
+        data: dict[str, Any] = response.json()
     except httpx.HTTPStatusError as e:
         await log_error(ctx, f"{error_label} HTTP error: {e}")
         raise
@@ -143,14 +151,16 @@ async def _govinfo_get(
 
     """
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                url,
-                headers=_govinfo_headers(),
-                timeout=DEFAULT_TIMEOUT,
-            )
-            response.raise_for_status()
-            data: dict[str, Any] = response.json()
+        response = await request_with_retry(
+            "GET",
+            url,
+            headers=_govinfo_headers(),
+            request_timeout=DEFAULT_TIMEOUT,
+            ctx=ctx,
+            error_label=error_label,
+        )
+        response.raise_for_status()
+        data: dict[str, Any] = response.json()
     except httpx.HTTPStatusError as e:
         await log_error(ctx, f"{error_label} HTTP error: {e}")
         raise
@@ -196,7 +206,13 @@ def _get_collection_description(collection_code: str) -> str:
     return descriptions.get(collection_code, "No description available.")
 
 
-@govinfo_server.tool(tags={"requires-govinfo-key"})
+@govinfo_server.tool(
+    name="search_statutes",
+    title="Search US Statutes",
+    tags={"requires-govinfo-key", "statutes"},
+    annotations=read_only_annotations("Search US Statutes"),
+    timeout=30.0,
+)
 async def search_statutes(
     query: Annotated[str, Field(description="Search query text for US statutes")],
     collection: Annotated[
@@ -325,7 +341,13 @@ async def search_statutes(
     return data
 
 
-@govinfo_server.tool(tags={"requires-govinfo-key"})
+@govinfo_server.tool(
+    name="get_uscode_title",
+    title="Get U.S. Code Title",
+    tags={"requires-govinfo-key", "statutes"},
+    annotations=read_only_annotations("Get U.S. Code Title"),
+    timeout=30.0,
+)
 async def get_uscode_title(
     title_number: Annotated[
         str, Field(description="USC title number (e.g., '42' for Title 42)")
@@ -396,7 +418,14 @@ async def get_uscode_title(
     return data
 
 
-@govinfo_server.tool(tags={"requires-govinfo-key"}, task=True)
+@govinfo_server.tool(
+    name="get_statute_content",
+    title="Get Statute Content",
+    tags={"requires-govinfo-key", "statutes"},
+    annotations=read_only_annotations("Get Statute Content"),
+    timeout=60.0,
+    task=True,
+)
 async def get_statute_content(
     package_id: Annotated[
         str, Field(description="Package ID (e.g., 'PLAW-117publ58')")
@@ -466,7 +495,13 @@ async def get_statute_content(
     return data
 
 
-@govinfo_server.tool(tags={"requires-govinfo-key"})
+@govinfo_server.tool(
+    name="list_statute_collections",
+    title="List Statute Collections",
+    tags={"requires-govinfo-key", "statutes"},
+    annotations=read_only_annotations("List Statute Collections"),
+    timeout=30.0,
+)
 async def list_statute_collections(
     ctx: Context | None = None,
 ) -> dict[str, Any]:

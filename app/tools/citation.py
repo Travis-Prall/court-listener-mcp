@@ -32,7 +32,9 @@ from app.tools.common import (
     auth_headers,
     log_error,
     log_info,
+    request_with_retry,
 )
+from app.tools.params import read_only_annotations
 
 # Create the citation server
 citation_server: FastMCP[Any] = FastMCP(
@@ -170,16 +172,25 @@ async def _lookup_citations_batch(
         raise ValueError(error_msg)
 
     try:
-        async with httpx.AsyncClient() as client:
-            # The citation lookup API uses POST with form data
-            response = await client.post(
-                CITATION_LOOKUP_URL,
-                data={"text": " ".join(citations)},
-                headers=auth_headers(),
-                timeout=request_timeout,
-            )
-            response.raise_for_status()
-            data: dict[str, Any] = response.json()
+        # The citation lookup API uses POST with form data.
+        response = await request_with_retry(
+            "POST",
+            CITATION_LOOKUP_URL,
+            data={"text": " ".join(citations)},
+            headers=auth_headers(),
+            request_timeout=request_timeout,
+            ctx=ctx,
+            error_label="Citation lookup",
+        )
+        response.raise_for_status()
+        payload = response.json()
+        # The live citation-lookup API returns a top-level JSON array
+        # (e.g. [{"citation": ...}]). Normalize it into the documented
+        # {"results": [...]} envelope so the declared dict return type
+        # and MCP structured content stay valid.
+        data: dict[str, Any] = (
+            {"results": payload} if isinstance(payload, list) else payload
+        )
     except httpx.HTTPStatusError as e:
         await log_error(ctx, f"HTTP error looking up citations: {e}")
         raise
@@ -340,13 +351,14 @@ async def _courtlistener_citation_data(citation: str) -> dict[str, Any]:
         return {"success": False, "error": "COURT_LISTENER_API_KEY not found"}
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                CITATION_LOOKUP_URL,
-                data={"text": citation},
-                headers=auth_headers(),
-                timeout=DEFAULT_TIMEOUT,
-            )
+        response = await request_with_retry(
+            "POST",
+            CITATION_LOOKUP_URL,
+            data={"text": citation},
+            headers=auth_headers(),
+            request_timeout=DEFAULT_TIMEOUT,
+            error_label="Enhanced citation lookup",
+        )
     except Exception as e:
         return {"success": False, "error": f"CourtListener API error: {e}"}
 
@@ -396,7 +408,13 @@ def _combined_citation_info(result: dict[str, Any]) -> dict[str, Any]:
     return {"has_both_sources": False, "available_sources": available_sources}
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="get_citations",
+    title="Look Up Citations",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Look Up Citations"),
+    timeout=30.0,
+)
 async def get_citations(
     citation: Annotated[
         str,
@@ -427,7 +445,13 @@ async def get_citations(
     return await _lookup_citations_batch(citations, ctx)
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="parse_citation",
+    title="Parse Citation",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Parse Citation"),
+    timeout=30.0,
+)
 async def parse_citation(
     citation: Annotated[str, Field(description="The citation string to parse")],
     ctx: Context | None = None,
@@ -464,7 +488,13 @@ async def parse_citation(
     return {"success": True, "parser_used": parser_used, **result}
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="validate_citation",
+    title="Validate Citation",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Validate Citation"),
+    timeout=30.0,
+)
 async def validate_citation(
     citation: Annotated[str, Field(description="The citation string to validate")],
     ctx: Context | None = None,
@@ -494,7 +524,13 @@ async def validate_citation(
     return {"valid": True, "citation": citation, "parsed": parsed}
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="verify_citation_format",
+    title="Verify Citation Format",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Verify Citation Format"),
+    timeout=30.0,
+)
 async def verify_citation_format(
     citation: Annotated[
         str,
@@ -548,7 +584,14 @@ async def verify_citation_format(
     return result
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"}, task=True)
+@citation_server.tool(
+    name="batch_lookup",
+    title="Batch Look Up Citations",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Batch Look Up Citations"),
+    timeout=60.0,
+    task=True,
+)
 async def batch_lookup(
     citations: Annotated[
         list[str],
@@ -592,7 +635,13 @@ async def batch_lookup(
     return await _lookup_citations_batch(citations, ctx, request_timeout=BATCH_TIMEOUT)
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="get_citation_details",
+    title="Get Citation Details",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Get Citation Details"),
+    timeout=30.0,
+)
 async def get_citation_details(
     citation_id: Annotated[str, Field(description="The citation ID to retrieve")],
     ctx: Context | None = None,
@@ -620,7 +669,13 @@ async def get_citation_details(
     return await _lookup_citations_batch([citation_id], ctx)
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="lookup_citation",
+    title="Look Up Citation",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Look Up Citation"),
+    timeout=30.0,
+)
 async def lookup_citation(
     citation: Annotated[
         str,
@@ -662,7 +717,14 @@ async def lookup_citation(
     return await _lookup_citations_batch([citation], ctx)
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"}, task=True)
+@citation_server.tool(
+    name="batch_lookup_citations",
+    title="Batch Look Up Citations (CiteURL)",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Batch Look Up Citations (CiteURL)"),
+    timeout=60.0,
+    task=True,
+)
 async def batch_lookup_citations(
     citations: Annotated[
         list[str],
@@ -692,7 +754,13 @@ async def batch_lookup_citations(
     return await _lookup_citations_batch(citations, ctx, request_timeout=BATCH_TIMEOUT)
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="parse_citation_with_citeurl",
+    title="Parse Citation (CiteURL)",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Parse Citation (CiteURL)"),
+    timeout=30.0,
+)
 async def parse_citation_with_citeurl(
     citation: Annotated[
         str,
@@ -756,7 +824,13 @@ async def parse_citation_with_citeurl(
     return result
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="extract_citations_from_text",
+    title="Extract Citations From Text",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Extract Citations From Text"),
+    timeout=30.0,
+)
 async def extract_citations_from_text(
     text: Annotated[
         str,
@@ -809,7 +883,13 @@ async def extract_citations_from_text(
     }
 
 
-@citation_server.tool(tags={"requires-courtlistener-key"})
+@citation_server.tool(
+    name="enhanced_citation_lookup",
+    title="Enhanced Citation Lookup",
+    tags={"requires-courtlistener-key", "citation"},
+    annotations=read_only_annotations("Enhanced Citation Lookup"),
+    timeout=30.0,
+)
 async def enhanced_citation_lookup(
     citation: Annotated[
         str,

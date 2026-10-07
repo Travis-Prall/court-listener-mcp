@@ -53,6 +53,20 @@ def no_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def disable_retry_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove HTTP retry backoff delays so error-path tests stay fast.
+
+    The retry helper reads the backoff constant at call time, so patching
+    the module attribute is enough to make retries immediate in tests.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    """
+    monkeypatch.setattr("app.tools.common.RETRY_BACKOFF_SECONDS", 0.0)
+
+
+@pytest.fixture(autouse=True)
 def ensure_keyed_tool_groups_enabled() -> None:
     """Keep API-key-gated tool groups enabled during each test.
 

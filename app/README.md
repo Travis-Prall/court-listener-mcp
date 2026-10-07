@@ -13,19 +13,23 @@ A comprehensive Model Context Protocol (MCP) server for accessing the CourtListe
   - `citation.py`: Citation lookup, parsing, batch, and enhanced tools
   - `govinfo.py`: GovInfo statute search and lookup tools (USC, Statutes at Large, PLAW, COMPS)
   - `regulations.py`: Regulations.gov federal rulemaking tools (documents)
+  - `params.py`: Shared tool metadata helpers (e.g. read-only annotations)
+  - `common.py`: Shared API config, auth headers, logging, and the retrying HTTP helper
 - **`app/models.py`**: Pydantic models for data validation
+- **`app/middleware.py`**: Observability middleware (error handling, timing, logging) registered on the root server
 - **`app/config.py`**: Configuration and environment variable management
 - **`app/utils.py``: Utility functions (XML/JSON conversion, etc.)
 - **`app/logs/`**: Server logs
 
 ## Server Transport
 
-The server is configured to use the **HTTP** (streamable) transport by default, making it accessible via HTTP at `http://localhost:8000/mcp/`. This allows:
+The server is configured to use the **HTTP** (streamable) transport by default, making it accessible via HTTP at `http://localhost:8785/mcp/` (host, port, and path are configurable via `HOST`, `MCP_PORT`, and `MCP_PATH`). This allows:
 
 - **HTTP-based access**: Standard HTTP requests for web-based deployments
 - **External connections**: Server binds to `0.0.0.0` for network accessibility
 - **RESTful interface**: Modern HTTP transport for better integration
 - **Production ready**: Suitable for containerized and cloud deployments
+- **ASGI app**: `app.server:app` is exported for Uvicorn (`uvicorn app.server:app`) and multi-worker/stateless deployments
 - **Health endpoint**: Unauthenticated `GET /health` liveness probe (returns status, version, and timestamp) for load balancers, Docker `HEALTHCHECK`, and Kubernetes probes
 
 To connect to the server programmatically:
@@ -33,9 +37,20 @@ To connect to the server programmatically:
 ```python
 from fastmcp import Client
 
-async with Client("http://localhost:8000/mcp/") as client:
+async with Client("http://localhost:8785/mcp/") as client:
     result = await client.call_tool("status")
 ```
+
+## Upstream Resilience
+
+Every outbound request to CourtListener, GovInfo, and Regulations.gov goes
+through a shared retry helper (`app.tools.common.request_with_retry`). It
+retries transient failures (connection errors and HTTP `429`/`5xx`
+responses) up to four attempts with exponential backoff (1s, 2s, 4s, capped
+at 8s), honoring a numeric `Retry-After` header when the upstream API sends
+one. Non-retryable responses such as `404` are returned immediately. Because
+every endpoint this server calls is a non-mutating read, retrying is always
+safe.
 
 ## Modules and Purposes
 
@@ -45,6 +60,9 @@ async with Client("http://localhost:8000/mcp/") as client:
 - **tools/citation.py**: Implements citation lookup, parsing, batch, and enhanced tools
 - **tools/govinfo.py**: Implements GovInfo statute search and lookup tools (USCODE, STATUTE, PLAW, COMPS collections)
 - **tools/regulations.py**: Implements Regulations.gov tools (document search/retrieval)
+- **tools/params.py**: Shared tool metadata/annotation helpers
+- **tools/common.py**: Shared API config, auth headers, logging, and the retrying HTTP helper
+- **middleware.py**: Registers error-handling, timing, and logging middleware
 - **models.py**: Pydantic models for API responses and validation
 - **config.py**: Loads environment and configures logging
 - **utils.py**: XML/JSON conversion, helpers

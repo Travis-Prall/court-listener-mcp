@@ -251,7 +251,7 @@ monitoring systems, and container orchestrators:
 
 ```bash
 curl http://localhost:8785/health
-# {"status":"healthy","service":"CourtListener ++ MCP Server","version":"0.2.2",...}
+# {"status":"healthy","service":"CourtListener ++ MCP Server","version":"0.3.0",...}
 ```
 
 The Docker image ships with a `HEALTHCHECK` against this endpoint and the
@@ -262,16 +262,33 @@ provided `docker-compose.yml` mirrors it, so `docker ps` and
 
 Following the [FastMCP HTTP deployment guide](https://gofastmcp.com/deployment/http.md),
 the server uses the **direct HTTP server** approach (`mcp.run_async(transport="http")`),
-which the guide recommends for standalone, single-instance deployments. For
-larger deployments, optional knobs (all environment-configurable):
+which the guide recommends for standalone, single-instance deployments. The
+same endpoint is also exported as a standard ASGI application (`app.server:app`)
+for Uvicorn-based deployments:
 
+```bash
+uv run uvicorn app.server:app --host 0.0.0.0 --port 8785
+```
+
+Both paths expose the identical MCP endpoint, `/health` probe, and
+observability middleware (error handling → timing → logging). Optional
+deployment knobs (all environment-configurable; defaults shown):
+
+- **Endpoint path**: `MCP_PATH=/mcp/` — honoured by both the direct-run and
+  ASGI paths.
 - **Horizontal scaling**: set `FASTMCP_STATELESS_HTTP=true` when running
-  multiple replicas behind a load balancer (streamable HTTP sessions are
-  per-instance, and sticky sessions are unreliable for MCP clients). Pair
-  with `FASTMCP_DOCKET_URL` so the tasks backend is shared.
+  multiple workers/replicas behind a load balancer (streamable HTTP sessions
+  are per-instance, and sticky sessions are unreliable for MCP clients). Pair
+  with `FASTMCP_DOCKET_URL` so the tasks backend is shared. With the ASGI app
+  you can then run `uvicorn app.server:app --workers 4`.
 - **Host/origin protection**: set `FASTMCP_HTTP_HOST_ORIGIN_PROTECTION=true`
   with explicit allow-lists (`FASTMCP_HTTP_ALLOWED_HOSTS`,
-  `FASTMCP_HTTP_ALLOWED_ORIGINS`) when exposing a public hostname.
+  `FASTMCP_HTTP_ALLOWED_ORIGINS`) when exposing a public hostname. FastMCP
+  reads these settings directly; the server does not override them.
+- **Browser clients (CORS)**: set `CORS_ALLOW_ORIGINS` to a comma-separated
+  list of origins when a browser-based MCP client (e.g. the MCP Inspector)
+  connects directly. Left empty (the default) no CORS middleware is added and
+  no CORS headers are emitted, which suits the current non-browser clients.
 - **Long-running tools behind proxies**: for tools that may exceed proxy
   timeouts, the guide recommends an EventStore for SSE polling; and when
   fronting with nginx set `proxy_buffering off` plus generous
@@ -356,6 +373,9 @@ COURTLISTENER_LOG_LEVEL=INFO
 COURTLISTENER_DEBUG=false
 HOST=0.0.0.0
 MCP_PORT=8785
+MCP_PATH=/mcp/
+# Comma-separated origins for browser-based MCP clients; empty = no CORS
+CORS_ALLOW_ORIGINS=
 ENVIRONMENT=production
 ```
 
@@ -365,7 +385,13 @@ ENVIRONMENT=production
 uv run python -m app.server
 ```
 
-This will start the server at:
+Or run the exported ASGI application directly with Uvicorn:
+
+```bash
+uv run uvicorn app.server:app --host 0.0.0.0 --port 8785
+```
+
+Both start the server at:
 
 - **Host**: `0.0.0.0` (accessible from external connections)
 - **Port**: `8785`
@@ -442,7 +468,7 @@ Manual publishing is automated by [`scripts/publish_images.sh`](scripts/publish_
 
 ```bash
 scripts/publish_images.sh          # auto-derives the version (git tag at HEAD, then pyproject.toml)
-scripts/publish_images.sh 0.2.2    # publish an explicit version
+scripts/publish_images.sh 0.3.0    # publish an explicit version
 scripts/publish_images.sh --ghcr   # also publish to GHCR (normally handled by CI)
 ```
 
