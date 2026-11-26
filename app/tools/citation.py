@@ -26,9 +26,11 @@ from pydantic import Field
 from app.tools.common import (
     API_KEY,
     BATCH_TIMEOUT,
+    BATCH_TOOL_TIMEOUT,
     CITATION_LOOKUP_URL,
     DEFAULT_TIMEOUT,
     HTTP_OK,
+    TOOL_TIMEOUT,
     auth_headers,
     log_error,
     log_info,
@@ -413,7 +415,7 @@ def _combined_citation_info(result: dict[str, Any]) -> dict[str, Any]:
     title="Look Up Citations",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Look Up Citations"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def get_citations(
     citation: Annotated[
@@ -450,7 +452,7 @@ async def get_citations(
     title="Parse Citation",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Parse Citation"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def parse_citation(
     citation: Annotated[str, Field(description="The citation string to parse")],
@@ -493,7 +495,7 @@ async def parse_citation(
     title="Validate Citation",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Validate Citation"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def validate_citation(
     citation: Annotated[str, Field(description="The citation string to validate")],
@@ -529,7 +531,7 @@ async def validate_citation(
     title="Verify Citation Format",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Verify Citation Format"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def verify_citation_format(
     citation: Annotated[
@@ -589,7 +591,7 @@ async def verify_citation_format(
     title="Batch Look Up Citations",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Batch Look Up Citations"),
-    timeout=60.0,
+    timeout=BATCH_TOOL_TIMEOUT,
     task=True,
 )
 async def batch_lookup(
@@ -640,7 +642,7 @@ async def batch_lookup(
     title="Get Citation Details",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Get Citation Details"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def get_citation_details(
     citation_id: Annotated[str, Field(description="The citation ID to retrieve")],
@@ -674,7 +676,7 @@ async def get_citation_details(
     title="Look Up Citation",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Look Up Citation"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def lookup_citation(
     citation: Annotated[
@@ -722,7 +724,7 @@ async def lookup_citation(
     title="Batch Look Up Citations (CiteURL)",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Batch Look Up Citations (CiteURL)"),
-    timeout=60.0,
+    timeout=BATCH_TOOL_TIMEOUT,
     task=True,
 )
 async def batch_lookup_citations(
@@ -759,7 +761,7 @@ async def batch_lookup_citations(
     title="Parse Citation (CiteURL)",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Parse Citation (CiteURL)"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def parse_citation_with_citeurl(
     citation: Annotated[
@@ -829,7 +831,7 @@ async def parse_citation_with_citeurl(
     title="Extract Citations From Text",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Extract Citations From Text"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def extract_citations_from_text(
     text: Annotated[
@@ -888,7 +890,7 @@ async def extract_citations_from_text(
     title="Enhanced Citation Lookup",
     tags={"requires-courtlistener-key", "citation"},
     annotations=read_only_annotations("Enhanced Citation Lookup"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def enhanced_citation_lookup(
     citation: Annotated[

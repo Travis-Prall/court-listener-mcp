@@ -5,6 +5,7 @@
 # ruff: file-ignore[assert, unused-function-argument]
 
 import json
+import os
 from typing import Any
 
 from dotenv import load_dotenv
@@ -14,15 +15,16 @@ from loguru import logger
 import pytest
 import respx
 
-from app.tools.common import SEARCH_URL
+from app.tools.common import SEARCH_URL, auth_headers
 from app.tools.search import search_server
 
 # Load environment variables
 load_dotenv()
 
+COURT_LISTENER_API_KEY = os.getenv("COURT_LISTENER_API_KEY")
 PUBLIC_SEARCH_URL = "https://www.courtlistener.com/api/rest/v4/search/"
-UNAUTHORIZED_STATUS = 401
 OK_STATUS = 200
+RATE_LIMITED_STATUS = 429
 
 MOCK_SEARCH_RESPONSE = {
     "count": 1,
@@ -47,27 +49,37 @@ def search_client() -> Client[Any]:
     return Client(search_server)
 
 
-# Test if CourtListener API allows public access
+# Test that the CourtListener API answers authenticated requests
 @pytest.mark.asyncio
-async def test_public_api_access() -> None:
-    """Test if CourtListener API allows public access."""
-    logger.info("Testing public API access...")
+async def test_authenticated_api_access() -> None:
+    """Test that the CourtListener API answers authenticated requests.
+
+    Anonymous search returns HTTP 401, so the token from
+    ``COURT_LISTENER_API_KEY`` is sent; the test is skipped when no key is
+    configured.
+    """
+    if not COURT_LISTENER_API_KEY:
+        pytest.skip("COURT_LISTENER_API_KEY not set; live API access test skipped")
+
+    logger.info("Testing authenticated API access...")
 
     async with httpx.AsyncClient() as client:
-        # Try a simple search without API key
         response = await client.get(
             PUBLIC_SEARCH_URL,
             params={"q": "test", "type": "o", "hit": 1},
+            headers=auth_headers(),
             timeout=10.0,
         )
 
-    if response.status_code == UNAUTHORIZED_STATUS:
-        pytest.fail("API requires authentication - need valid COURT_LISTENER_API_KEY")
-    if response.status_code == OK_STATUS:
-        logger.info("Public API access available")
-    else:
-        logger.warning(f"API returned status {response.status_code}")
-        pytest.fail(f"API returned status {response.status_code}")
+    logger.info(f"API returned status {response.status_code}")
+
+    if response.status_code == RATE_LIMITED_STATUS:
+        pytest.skip("CourtListener rate limit hit (429); re-run to check access")
+
+    assert response.status_code == OK_STATUS, (
+        f"Expected HTTP {OK_STATUS} from the authenticated search API, "
+        f"got {response.status_code}"
+    )
 
 
 def _ok(payload: dict[str, Any]) -> httpx.Response:

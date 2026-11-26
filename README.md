@@ -251,7 +251,7 @@ monitoring systems, and container orchestrators:
 
 ```bash
 curl http://localhost:8785/health
-# {"status":"healthy","service":"CourtListener ++ MCP Server","version":"0.3.0",...}
+# {"status":"healthy","service":"CourtListener ++ MCP Server","version":"0.3.1",...}
 ```
 
 The Docker image ships with a `HEALTHCHECK` against this endpoint and the
@@ -468,7 +468,7 @@ Manual publishing is automated by [`scripts/publish_images.sh`](scripts/publish_
 
 ```bash
 scripts/publish_images.sh          # auto-derives the version (git tag at HEAD, then pyproject.toml)
-scripts/publish_images.sh 0.3.0    # publish an explicit version
+scripts/publish_images.sh 0.3.1    # publish an explicit version
 scripts/publish_images.sh --ghcr   # also publish to GHCR (normally handled by CI)
 ```
 

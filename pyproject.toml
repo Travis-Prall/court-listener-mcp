@@ -1,6 +1,6 @@
 [project]
 name = "court-listener-mcp-server"
-version = "0.3.0"
+version = "0.3.1"
 description = "Model Context Protocol server providing LLM-friendly access to legal cases and court data through the CourtListener API v4, plus statute lookup via GovInfo and federal rulemaking document search via Regulations.gov"
 authors = [{ name = "Travis-Prall", email = "smart@travisprall.com" }]
 readme = "README.md"
@@ -15,16 +15,16 @@ classifiers = [
 ]
 
 dependencies = [
-  "fastmcp[tasks]>=4.0.11",
+  "fastmcp[tasks]>=4.2.6",
   "httpx>=0.28.1",
-  "loguru>=0.7.3",
-  "python-dotenv>=1.2.3",
-  "pydantic>=2.13.5",
-  "pydantic-settings>=2.15.0",
+  "loguru>=0.8.0",
+  "python-dotenv>=1.2.4",
+  "pydantic>=2.14.4",
+  "pydantic-settings>=2.16.3",
   "psutil>=7.2.2",
-  "citeurl[full]>=12.0.3",
+  "citeurl[full]>=12.0.4",
   # citeurl>=12 imports `markdown` in citeurl/__init__.py but does not declare it
-  "markdown>=3.10.3",
+  "markdown>=3.11.4",
 ]
 
 [project.urls]
@@ -40,18 +40,24 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
   # Testing
-  "pytest>=9.1.1",
-  "pytest-asyncio>=1.4.0",
+  "pytest>=9.2.0",
+  "pytest-asyncio>=1.5.0",
   "pytest-cov>=7.1.0",
   "respx>=0.23.1",  # HTTP mocking for httpx (keeps tests off the live API)
   # Code quality
-  "mypy>=2.3.1",
-  "ruff>=0.16.6",
-  "types-psutil>=7.2.2",  # Type stubs for psutil (mypy)
+  "mypy>=2.4.1",
+  "ruff>=0.17.6",
+  "types-psutil>=7.2.2.20261122",  # Type stubs for psutil (mypy)
   # Development tools
-  "ipython>=9.17.1",
+  "ipython>=9.19.1",
   "rich>=15.0.0",
 ]
+
+[tool.uv]
+# Self-contained project environment: real file copies in `.venv` and a
+# project-local cache so nothing is written to ~/.cache/uv.
+link-mode = "copy"
+cache-dir = ".uv-cache"
 
 [tool.uv.sources]
 # Add any custom package sources if needed

@@ -10,6 +10,7 @@ from app.tools.common import (
     API_KEY,
     DEFAULT_TIMEOUT,
     SEARCH_URL,
+    TOOL_TIMEOUT,
     auth_headers,
     log_error,
     log_info,
@@ -110,7 +111,7 @@ async def _execute_search(
     title="Search Court Opinions",
     tags={"requires-courtlistener-key", "search"},
     annotations=read_only_annotations("Search Court Opinions"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def opinions(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for full text of opinions")],
@@ -182,7 +183,7 @@ async def opinions(  # ruff: ignore[too-many-arguments, too-many-positional-argu
     title="Search Dockets",
     tags={"requires-courtlistener-key", "search"},
     annotations=read_only_annotations("Search Dockets"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def dockets(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for docket text")],
@@ -262,7 +263,7 @@ async def dockets(  # ruff: ignore[too-many-arguments, too-many-positional-argum
     title="Search Dockets With Documents",
     tags={"requires-courtlistener-key", "search"},
     annotations=read_only_annotations("Search Dockets With Documents"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def dockets_with_documents(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[
@@ -348,7 +349,7 @@ async def dockets_with_documents(  # ruff: ignore[too-many-arguments, too-many-p
     title="Search RECAP Documents",
     tags={"requires-courtlistener-key", "search"},
     annotations=read_only_annotations("Search RECAP Documents"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def recap_documents(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for document content")],
@@ -421,7 +422,7 @@ async def recap_documents(  # ruff: ignore[too-many-arguments, too-many-position
     title="Search Oral Argument Audio",
     tags={"requires-courtlistener-key", "search"},
     annotations=read_only_annotations("Search Oral Argument Audio"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def audio(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[str, Field(description="Search query for oral argument audio")],
@@ -494,7 +495,7 @@ async def audio(  # ruff: ignore[too-many-arguments, too-many-positional-argumen
     title="Search Judges and People",
     tags={"requires-courtlistener-key", "search"},
     annotations=read_only_annotations("Search Judges and People"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def people(  # ruff: ignore[too-many-arguments, too-many-positional-arguments] (MCP tool signature is the public API)
     q: Annotated[

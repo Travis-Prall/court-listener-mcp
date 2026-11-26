@@ -10,6 +10,7 @@ from app.tools.common import (
     API_BASE_URL,
     API_KEY,
     DEFAULT_TIMEOUT,
+    TOOL_TIMEOUT,
     auth_headers,
     log_error,
     log_info,
@@ -93,7 +94,7 @@ async def _fetch_record(
     title="Get Court Opinion",
     tags={"requires-courtlistener-key", "get"},
     annotations=read_only_annotations("Get Court Opinion"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def opinion(
     opinion_id: Annotated[str, Field(description="The opinion ID to retrieve")],
@@ -123,7 +124,7 @@ async def opinion(
     title="Get Docket",
     tags={"requires-courtlistener-key", "get"},
     annotations=read_only_annotations("Get Docket"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def docket(
     docket_id: Annotated[str, Field(description="The docket ID to retrieve")],
@@ -151,7 +152,7 @@ async def docket(
     title="Get Audio Recording",
     tags={"requires-courtlistener-key", "get"},
     annotations=read_only_annotations("Get Audio Recording"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def audio(
     audio_id: Annotated[str, Field(description="The audio recording ID to retrieve")],
@@ -179,7 +180,7 @@ async def audio(
     title="Get Opinion Cluster",
     tags={"requires-courtlistener-key", "get"},
     annotations=read_only_annotations("Get Opinion Cluster"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def cluster(
     cluster_id: Annotated[str, Field(description="The opinion cluster ID to retrieve")],
@@ -207,7 +208,7 @@ async def cluster(
     title="Get Judge or Person",
     tags={"requires-courtlistener-key", "get"},
     annotations=read_only_annotations("Get Judge or Person"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def person(
     person_id: Annotated[str, Field(description="The person (judge) ID to retrieve")],
@@ -235,7 +236,7 @@ async def person(
     title="Get Court",
     tags={"requires-courtlistener-key", "get"},
     annotations=read_only_annotations("Get Court"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def court(
     court_id: Annotated[

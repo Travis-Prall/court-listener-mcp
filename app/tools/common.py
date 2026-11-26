@@ -43,6 +43,23 @@ RETRY_BACKOFF_MAX_SECONDS = 8.0
 # 429 (rate limited) and 5xx gateway errors are transient and safe to retry.
 RETRYABLE_STATUS_CODES: frozenset[int] = frozenset({429, 500, 502, 503, 504})
 
+# MCP tool deadlines. fastmcp cancels a tool's coroutine once the tool's own
+# ``timeout`` expires, so a deadline no longer than a single attempt would abort
+# a call the retry policy is still legitimately working on: one timed-out
+# attempt plus its retry already exceeds a per-attempt timeout. Each deadline
+# therefore covers a full retry budget -- every attempt timing out, plus the
+# longest possible backoff between attempts -- with headroom for serialization.
+RETRY_BUDGET_SECONDS = (
+    RETRY_MAX_ATTEMPTS * DEFAULT_TIMEOUT
+    + (RETRY_MAX_ATTEMPTS - 1) * RETRY_BACKOFF_MAX_SECONDS
+)
+BATCH_RETRY_BUDGET_SECONDS = (
+    RETRY_MAX_ATTEMPTS * BATCH_TIMEOUT
+    + (RETRY_MAX_ATTEMPTS - 1) * RETRY_BACKOFF_MAX_SECONDS
+)
+TOOL_TIMEOUT = RETRY_BUDGET_SECONDS + 30.0
+BATCH_TOOL_TIMEOUT = BATCH_RETRY_BUDGET_SECONDS + 30.0
+
 
 def auth_headers() -> dict[str, str]:
     """Build request headers with token authentication when a key is available.

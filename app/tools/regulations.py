@@ -21,6 +21,7 @@ from pydantic import Field
 
 from app.tools.common import (
     DEFAULT_TIMEOUT,
+    TOOL_TIMEOUT,
     log_error,
     log_info,
     request_with_retry,
@@ -124,7 +125,7 @@ async def _regulations_get(
     title="Search Federal Rulemaking Documents",
     tags={"requires-regulations-key", "regulations"},
     annotations=read_only_annotations("Search Federal Rulemaking Documents"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def search_documents(
     query: Annotated[
@@ -233,7 +234,7 @@ async def search_documents(
     title="Get Regulation Document",
     tags={"requires-regulations-key", "regulations"},
     annotations=read_only_annotations("Get Regulation Document"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def get_document(
     document_id: Annotated[

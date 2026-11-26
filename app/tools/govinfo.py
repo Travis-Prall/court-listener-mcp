@@ -20,7 +20,9 @@ import httpx
 from pydantic import Field
 
 from app.tools.common import (
+    BATCH_TOOL_TIMEOUT,
     DEFAULT_TIMEOUT,
+    TOOL_TIMEOUT,
     log_error,
     log_info,
     request_with_retry,
@@ -211,7 +213,7 @@ def _get_collection_description(collection_code: str) -> str:
     title="Search US Statutes",
     tags={"requires-govinfo-key", "statutes"},
     annotations=read_only_annotations("Search US Statutes"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def search_statutes(
     query: Annotated[str, Field(description="Search query text for US statutes")],
@@ -346,7 +348,7 @@ async def search_statutes(
     title="Get U.S. Code Title",
     tags={"requires-govinfo-key", "statutes"},
     annotations=read_only_annotations("Get U.S. Code Title"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def get_uscode_title(
     title_number: Annotated[
@@ -423,7 +425,7 @@ async def get_uscode_title(
     title="Get Statute Content",
     tags={"requires-govinfo-key", "statutes"},
     annotations=read_only_annotations("Get Statute Content"),
-    timeout=60.0,
+    timeout=BATCH_TOOL_TIMEOUT,
     task=True,
 )
 async def get_statute_content(
@@ -500,7 +502,7 @@ async def get_statute_content(
     title="List Statute Collections",
     tags={"requires-govinfo-key", "statutes"},
     annotations=read_only_annotations("List Statute Collections"),
-    timeout=30.0,
+    timeout=TOOL_TIMEOUT,
 )
 async def list_statute_collections(
     ctx: Context | None = None,

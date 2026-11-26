@@ -83,7 +83,7 @@ async def test_status_tool(client: Client[Any]) -> None:
         # Verify expected fields
         assert data["status"] == "healthy"
         assert data["service"] == "CourtListener ++ MCP Server"
-        assert data["version"] == "0.3.0"
+        assert data["version"] == "0.3.1"
         assert "timestamp" in data
         assert "environment" in data
         assert "system" in data

@@ -34,6 +34,9 @@ Tests are located in the `tests/` directory. All test modules are prefixed with 
     - `test_govinfo_integration.py` — `GOVINFO_API_KEY`; GovInfo statute tools.
     - `test_regulations_integration.py` — `REGULATIONS_API_KEY`; Regulations.gov
       rulemaking document tools.
+    - `test_api_access.py` and the live check in `test_search_tools_direct.py` —
+      `COURT_LISTENER_API_KEY`. CourtListener rejects anonymous search with HTTP
+      401, so these assert authenticated access and skip when no key is set.
 - **Citation/Parsing Tests:**
   - Test citation parsing, extraction, and enhanced tools (e.g., `test_citeurl_integration.py`, `test_enhanced_citation_tools.py`)
 - **Logs:**

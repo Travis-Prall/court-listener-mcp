@@ -5,7 +5,8 @@ and verify that ``app.tools.common.request_with_retry`` retries transient
 upstream failures - transport errors and the 429/5xx statuses in
 ``RETRYABLE_STATUS_CODES`` - while returning non-retryable responses
 immediately. Backoff delays are zeroed by an autouse conftest fixture, so
-the suite runs instantly.
+the suite runs instantly. A final check guards the invariant that every
+tool deadline covers the retry budget it wraps.
 """
 
 # Pytest assertions are the idiomatic test mechanism in this file.
@@ -17,18 +18,35 @@ import httpx
 import pytest
 import respx
 
+from app.tools.citation import citation_server
 from app.tools.common import (
+    BATCH_TOOL_TIMEOUT,
+    RETRY_BUDGET_SECONDS,
     RETRY_MAX_ATTEMPTS,
     RETRYABLE_STATUS_CODES,
+    TOOL_TIMEOUT,
     _retry_delay,
     request_with_retry,
 )
+from app.tools.get import get_server
+from app.tools.govinfo import govinfo_server
+from app.tools.regulations import regulations_server
+from app.tools.search import search_server
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 URL = "https://example.test/resource"
 OK_PAYLOAD: dict[str, Any] = {"ok": True}
+
+# Sub-servers whose tools call upstream HTTP APIs and therefore retry.
+NETWORK_TOOL_SERVERS = (
+    search_server,
+    get_server,
+    citation_server,
+    govinfo_server,
+    regulations_server,
+)
 
 # Total request counts after a given number of transient-failure retries.
 CALLS_AFTER_ONE_RETRY = 2
@@ -177,3 +195,31 @@ async def test_post_body_is_forwarded() -> None:
 
     assert response.status_code == httpx.codes.OK
     assert route.calls.last.request.content == b"text=123"
+
+
+@pytest.mark.asyncio
+async def test_tool_deadlines_cover_retry_budget() -> None:
+    """Every network-backed tool deadline allows a full retry budget.
+
+    fastmcp cancels a tool's coroutine once the tool deadline expires, so a
+    deadline at or below the retry budget aborts a call the retry policy is
+    still working on: one timed-out attempt plus its retry already exceeds a
+    per-attempt timeout. Local-only tools stay on the parent server and keep
+    their short deadlines.
+    """
+    deadlines: dict[str, float] = {}
+    for server in NETWORK_TOOL_SERVERS:
+        for tool in await server.list_tools():
+            timeout = getattr(tool, "timeout", None)
+            assert timeout is not None, f"{tool.name} has no tool deadline"
+            deadlines[tool.name] = float(timeout)
+
+    assert deadlines
+    for name, timeout in deadlines.items():
+        assert timeout > RETRY_BUDGET_SECONDS, (
+            f"{name} deadline {timeout}s cannot cover the "
+            f"{RETRY_BUDGET_SECONDS}s retry budget it wraps"
+        )
+    assert set(deadlines.values()) <= {TOOL_TIMEOUT, BATCH_TOOL_TIMEOUT}, (
+        "tool decorators must use the shared deadline constants"
+    )

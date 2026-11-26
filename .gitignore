@@ -166,6 +166,7 @@ archives/
 
 # uv
 uv.lock.temp
+.uv-cache/
 dist/
 
 # Jupyter Notebook
