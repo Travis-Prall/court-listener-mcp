@@ -7,7 +7,7 @@
 
 # Base image pinned to an immutable multi-arch manifest digest for reproducibility.
 # To bump: docker buildx imagetools inspect python:3.14-slim  (keep both stages in sync)
-FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS builder
+FROM python:3.14-slim@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b AS builder
 
 WORKDIR /app
 
@@ -30,7 +30,17 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Runtime stage: slim base, non-root fixed UID, no build tools, no curl
 ###############################################################################
 
-FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS runtime
+FROM python:3.14-slim@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b AS runtime
+
+# Apply Debian point/security updates available at build time. The pinned base
+# digest can lag the security archive (e.g. libzstd1 1.5.7+dfsg-1 ->
+# 1.5.7+dfsg-1+deb13u1, CVE-2026-124851), and the CI Trivy gate blocks on
+# unpatched CRITICAL/HIGH findings. The apt lists are dropped again so the layer
+# only carries the upgraded packages.
+RUN apt-get update -qq \
+    && apt-get upgrade -y -qq \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Non-root user with a fixed UID/GID (works with orchestrator runAsNonRoot checks).
 # No login shell; HOME is redirected to tmpfs via ENV below.
@@ -38,6 +48,16 @@ RUN groupadd -r -g 10001 courtlistener \
     && useradd -r -u 10001 -g courtlistener -d /nonexistent -s /usr/sbin/nologin courtlistener
 
 WORKDIR /src
+
+# Drop pip from the runtime image. Runtime deps live in /app/.venv (installed by
+# uv in the builder stage), so pip is never needed. Its vendored dependency pins
+# (pip/_vendor/vendor.txt: msgpack, certifi, urllib3, setuptools) are flagged by
+# vulnerability scanners even though they are not importable from the venv.
+# Removing pip clears those findings, saves ~7 MB and drops runtime install
+# capability from the image.
+RUN rm -rf /usr/local/lib/python3.*/site-packages/pip \
+           /usr/local/lib/python3.*/site-packages/pip-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.*
 
 # Runtime dependencies only - the venv carries no pip/uv and the final image
 # ships no shell utilities or compiler toolchain.

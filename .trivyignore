@@ -1,24 +1,20 @@
-# Trivy vulnerability waivers (triaged 2026-09-10)
+# Trivy vulnerability waivers.
 #
-# Both findings below are reported against packages that exist ONLY as
-# build-provenance metadata inside wheel-embedded SBOM files
-# (*.dist-info/sboms), never as installed runtime packages.
+# No waivers are currently active. The two historic entries
+# (GHSA-6v7p-g79w-8964 / msgpack, CVE-2025-47273 / setuptools) became obsolete
+# in v0.3.1, when pip was removed from the runtime image (see the Dockerfile).
 #
-# Evidence verified at triage time:
-# - `uv.lock` contains neither msgpack nor setuptools (grep count = 0)
-# - inside the built image: `python -c "import msgpack/setuptools"` fails with
-#   ModuleNotFoundError, and `find / -name "*msgpack*" -o -name "*setuptools*"`
-#   returns no dist-info directories (only pip's vendored copy at
-#   /usr/local/lib/python3.14/site-packages/pip/_vendor/msgpack, which is part
-#   of pip itself, not an installed msgpack distribution)
-# - Trivy JSON reports both findings with "AnalyzedBy": "sbom" and no FilePath,
-#   attributed to a base-image layer
+# Root cause of those findings: Trivy parses the vendored pins in
+# /usr/local/lib/python3.*/site-packages/pip/_vendor/vendor.txt, which lists
+# build-time copies (msgpack, certifi, urllib3, setuptools) that ship inside the
+# base image's pip and are never importable from the application venv
+# (/app/.venv). Removing pip cleared all of them plus a ~7 MB layer, so the
+# image scans clean at CRITICAL/HIGH.
 #
-# Re-evaluate these waivers when the base image or the producing wheels are
-# updated (pip vendors msgpack; upstream wheels embed their build SBOMs).
-
-# msgpack 1.1.2 (build-time dep recorded in wheel-embedded SBOM; fixed in 1.2.1)
-GHSA-6v7p-g79w-8964
-
-# setuptools 70.3.0 (build-time dep recorded in wheel-embedded SBOM; fixed 78.1.1)
-CVE-2025-47273
+# Debian findings are handled structurally instead of being waived: the runtime
+# stage pins a current base digest and runs `apt-get upgrade` at build time
+# (that is how libzstd1 CVE-2026-124851 was resolved).
+#
+# Before adding an ID below, verify the package is really installed in the venv:
+#   docker run --rm <image> python -c \
+#     "import importlib.metadata as m; print(m.version('<package>'))"
